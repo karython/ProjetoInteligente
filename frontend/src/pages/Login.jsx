@@ -68,6 +68,9 @@ const Login = () => {
               Criar conta
             </Link>
           </p>
+          <p className="text-center text-gray-400 mt-4 text-sm">
+            <Link to="/" className="text-primary font-semibold hover:underline ml-4">⟵ Voltar para Tela Inicial</Link>
+          </p>
         </Card>
       </div>
     </div>
