@@ -1,125 +1,123 @@
-# README.md
-# NOME_DO_SISTEMA - Backend
+# Project Booster
 
-Backend completo de plataforma SaaS educacional para planejamento de projetos com IA.
-
-## Tecnologias
-
-- Python 3.12
-- FastAPI
-- SQLAlchemy 2.x
-- PostgreSQL
-- JWT Authentication
-- LLaMA 3 8B Instruct (via Ollama)
+Plataforma SaaS educacional para planejamento inteligente de projetos acadêmicos e técnicos.
 
 ## Estrutura do Projeto
+
 ```
-/app
-    /core
-        config.py          # Configurações
-        security.py        # JWT e hashing
-        database.py        # Conexão DB
-        deps.py            # Dependencies
-    /models
-        user.py            # Modelo User
-        project.py         # Modelo Project
-        project_plan.py    # Modelo ProjectPlan
-    /schemas
-        user.py            # Schemas Pydantic User
-        project.py         # Schemas Pydantic Project
-    /repositories
-        user_repository.py
-        project_repository.py
-        project_plan_repository.py
-    /services
-        auth_service.py    # Lógica autenticação
-        project_service.py # Lógica projetos
-        plan_service.py    # Lógica planejamento
-    /routes
-        auth.py            # Rotas autenticação
-        projects.py        # Rotas projetos
-        ai.py              # Rotas IA
-    /ai
-        ai_service.py      # Integração Ollama
-    main.py                # App principal
+project-booster/
+├── src/
+│   ├── components/          # Componentes reutilizáveis
+│   │   ├── Button.jsx
+│   │   ├── Card.jsx
+│   │   ├── Input.jsx
+│   │   ├── Sidebar.jsx
+│   │   └── Stepper.jsx
+│   ├── layouts/             # Layouts
+│   │   └── DashboardLayout.jsx
+│   ├── pages/               # Páginas
+│   │   ├── LandingPage.jsx
+│   │   ├── Login.jsx
+│   │   ├── Signup.jsx
+│   │   ├── Dashboard.jsx
+│   │   ├── NewProject.jsx
+│   │   ├── ProjectDetail.jsx
+│   │   ├── Plans.jsx
+│   │   └── Profile.jsx
+│   ├── data/                # Dados mockados
+│   │   └── mockData.js
+│   ├── App.jsx              # Configuração de rotas
+│   ├── main.jsx             # Entry point
+│   └── index.css            # Estilos globais
+├── public/
+├── index.html
+├── package.json
+├── vite.config.js
+├── tailwind.config.js
+└── postcss.config.js
 ```
 
-## Pré-requisitos
+## Tecnologias Utilizadas
 
-1. Python 3.12+
-2. PostgreSQL
-3. Ollama com LLaMA 3 8B Instruct
-
-### Instalar Ollama e LLaMA 3
-```bash
-# Instalar Ollama
-curl -fsSL https://ollama.com/install.sh | sh
-
-# Baixar modelo LLaMA 3 8B Instruct
-ollama pull llama3:8b-instruct
-
-# Verificar
-ollama list
-```
+- **React 18** - Biblioteca JavaScript
+- **Vite** - Build tool
+- **React Router DOM** - Roteamento
+- **TailwindCSS** - Estilização
+- **Plus Jakarta Sans** - Tipografia
 
 ## Instalação
 
-### Opção 1: Docker (Recomendado)
 ```bash
-docker-compose up -d
-```
-
-### Opção 2: Local
-```bash
-# Criar ambiente virtual
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# ou
-venv\Scripts\activate     # Windows
-
 # Instalar dependências
-pip install -r requirements.txt
+npm install
 
-# Configurar variáveis de ambiente
-export DATABASE_URL="postgresql://postgres:postgres@localhost:5432/nome_do_sistema"
-export SECRET_KEY="your-secret-key-min-32-chars"
+# Executar em modo desenvolvimento
+npm run dev
 
-# Executar
-uvicorn app.main:app --reload
+# Build para produção
+npm run build
+
+# Preview da build
+npm run preview
 ```
 
-## Endpoints
+## Funcionalidades
 
-### Autenticação
+### ✅ Implementadas
 
-- `POST /api/v1/auth/register` - Registrar usuário
-- `POST /api/v1/auth/login` - Login
+- Landing Page moderna
+- Sistema de autenticação (UI)
+- Dashboard com estatísticas e projetos
+- Wizard de criação de projeto (4 etapas)
+- Página de detalhes do projeto com 5 abas:
+  - Backlog de tarefas
+  - Estrutura de pastas
+  - Checklist técnico
+  - Sequência ideal (timeline)
+  - Cronograma semanal
+- Página de planos (Free e Pro)
+- **Página de perfil** com:
+  - Edição de informações pessoais
+  - Alteração de senha
+  - Opção de excluir conta
+- **Sistema de logout**
+- Layout responsivo
+- Animações suaves
+- Dados mockados para demonstração
 
-### Projetos
+### 🎨 Design
 
-- `POST /api/v1/projects` - Criar projeto
-- `GET /api/v1/projects` - Listar projetos
-- `GET /api/v1/projects/{id}` - Obter projeto
-- `DELETE /api/v1/projects/{id}` - Deletar projeto
+- Paleta de cores azul moderna
+- Interface minimalista estilo SaaS
+- Componentes reutilizáveis
+- Hover effects e transições
+- Tipografia hierárquica
+- Cards com sombras suaves
 
-### IA
+## Rotas
 
-- `POST /api/v1/projects/{id}/generate-plan` - Gerar planejamento
+- `/` - Landing Page
+- `/login` - Login
+- `/signup` - Cadastro
+- `/dashboard` - Meus Projetos (Dashboard integrado)
+- `/new-project` - Wizard de criação
+- `/project/:id` - Detalhes do projeto
+- `/plans` - Planos e preços
+- `/profile` - Meu Perfil (editar dados e senha)
 
-## Regras de Negócio
+## Próximos Passos (Backend)
 
-### Plano FREE
-- Máximo 2 projetos ativos
-- 1 geração de planejamento por projeto
+- Integração com API
+- Autenticação real (JWT)
+- Persistência de dados
+- Geração de planejamento com IA
+- Exportação PDF
+- Sistema de pagamentos
 
-### Plano PRO
-- Projetos ilimitados
-- Replanejamento ilimitado
+## Observações
 
-## Documentação
-
-Acesse `/docs` para Swagger UI ou `/redoc` para ReDoc.
-
-## Licença
-
-Proprietary
+- Projeto frontend completo e funcional
+- Dados mockados para demonstração
+- Pronto para integração com backend
+- Código organizado e escalável
+- Componentes reutilizáveis
