@@ -173,7 +173,7 @@ const LandingPage = () => {
             <a href="#" className="hover:text-white transition-colors">Privacidade</a>
             <a href="#" className="hover:text-white transition-colors">Contato</a>
           </div>
-          <p className="mt-8 text-gray-500 text-sm">© 2026 Project Booster. Todos os direitos reservados.</p>
+          <p className="mt-8 text-gray-500 text-sm">© 2026 Projeto Inteligente. Todos os direitos reservados. Desenvolvido por <a href="https://karythongomes.com.br"><strong>GomesTechnology</strong></a>.</p>
         </div>
       </footer>
     </div>
