@@ -1,8 +1,9 @@
 # Teste manual no Python REPL
 
+import os
 from groq import Groq
 
-client = Groq(api_key="REMOVED_SECRET")
+client = Groq(api_key=os.environ["GROQ_API_KEY"])
 
 chat_completion = client.chat.completions.create(
     messages=[

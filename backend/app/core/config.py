@@ -11,15 +11,15 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "NOME_DO_SISTEMA"
     VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
-    
-    SECRET_KEY: str = "organizador-de-projetos-change-in-production-min-32-chars"
+
+    SECRET_KEY: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
-    
-    DATABASE_URL: str = "postgresql://avnadmin:REMOVED_SECRET@pg-12a52342-karython-5bc4.i.aivencloud.com:22731/defaultdb?sslmode=require"
 
-    AI_PROVIDER: str = "GROQ"  # or "groq"
-    GROQ_API_KEY: str = "REMOVED_SECRET"
+    DATABASE_URL: str
+
+    AI_PROVIDER: str = "GROQ"
+    GROQ_API_KEY: str = ""
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
 
     OLLAMA_BASE_URL: str = "http://localhost:11434"
