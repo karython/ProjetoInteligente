@@ -1,6 +1,10 @@
 # /app/core/config.py
+from pathlib import Path
 from pydantic_settings import BaseSettings
 from typing import Optional
+
+# Resolve to the project root .env regardless of where the server is run from
+_ENV_FILE = str(Path(__file__).resolve().parent.parent.parent.parent / ".env")
 
 
 class Settings(BaseSettings):
@@ -8,22 +12,22 @@ class Settings(BaseSettings):
     VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
     
-    SECRET_KEY: str = "your-secret-key-change-in-production-min-32-chars"
+    SECRET_KEY: str = "organizador-de-projetos-change-in-production-min-32-chars"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
     
-    DATABASE_URL: str = "postgresql://boosteruser:booster123@localhost:5432/projectbooster"
+    DATABASE_URL: str = "postgresql://avnadmin:REMOVED_SECRET@pg-12a52342-karython-5bc4.i.aivencloud.com:22731/defaultdb?sslmode=require"
 
     AI_PROVIDER: str = "GROQ"  # or "groq"
-    GROQ_API_KEY: str = ""
-    GROQ_MODEL: str = "llama-3.1-70b-versatile"
+    GROQ_API_KEY: str = "REMOVED_SECRET"
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"
 
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str = "llama3:8b-instruct"
 
     class Config:
         case_sensitive = True
-        env_file = ".env"
+        env_file = _ENV_FILE
 
 
 settings = Settings()

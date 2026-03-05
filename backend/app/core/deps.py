@@ -23,13 +23,19 @@ def get_current_user(
             detail="Invalid authentication credentials"
         )
     
-    user_id: int = payload.get("sub")
-    if user_id is None:
+    user_id_str = payload.get("sub")
+    if user_id_str is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials"
         )
-    
+    try:
+        user_id: int = int(user_id_str)
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials"
+        )
     user_repo = UserRepository(db)
     user = user_repo.get_by_id(user_id)
     

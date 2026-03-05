@@ -81,12 +81,60 @@ const ProjectDetail = () => {
               {typeof item === 'string' ? (
                 <p className="text-gray-700">{item}</p>
               ) : (
-                <div>
+                <div className="space-y-2">
+                  {item.numero !== undefined && !item.titulo && (
+                    <p className="font-semibold text-gray-900">Semana {item.numero}</p>
+                  )}
+                  {item.numero !== undefined && item.nome && (
+                    <p className="font-semibold text-gray-900">Fase {item.numero}: {item.nome}</p>
+                  )}
                   {item.titulo && <p className="font-semibold text-gray-900">{item.titulo}</p>}
-                  {item.descricao && <p className="text-sm text-gray-600 mt-1">{item.descricao}</p>}
-                  {item.tarefas && renderList(item.tarefas)}
-                  {!item.titulo && !item.descricao && !item.tarefas && (
-                    <pre className="text-sm text-gray-700 whitespace-pre-wrap">{JSON.stringify(item, null, 2)}</pre>
+                  {item.categoria && <p className="font-medium text-gray-800">{item.categoria}</p>}
+                  {item.caminho && <p className="font-mono text-sm text-blue-700 bg-blue-50 px-2 py-1 rounded">{item.caminho}</p>}
+                  {item.descricao && <p className="text-sm text-gray-600">{item.descricao}</p>}
+                  {item.prioridade && (
+                    <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                      Prioridade: {item.prioridade}
+                    </span>
+                  )}
+                  {item.duracao_estimada && (
+                    <p className="text-xs text-gray-500">Duração estimada: {item.duracao_estimada}</p>
+                  )}
+                  {item.tarefas && (
+                    <div className="mt-2">
+                      <p className="text-xs font-medium text-gray-500 uppercase mb-1">Tarefas</p>
+                      {renderPlanSection(item.tarefas)}
+                    </div>
+                  )}
+                  {item.user_stories && (
+                    <div className="mt-2">
+                      <p className="text-xs font-medium text-gray-500 uppercase mb-1">User Stories</p>
+                      {renderPlanSection(item.user_stories)}
+                    </div>
+                  )}
+                  {item.criterios_aceite && (
+                    <div className="mt-2">
+                      <p className="text-xs font-medium text-gray-500 uppercase mb-1">Critérios de Aceite</p>
+                      {renderList(item.criterios_aceite)}
+                    </div>
+                  )}
+                  {item.arquivos_principais && (
+                    <div className="mt-2">
+                      <p className="text-xs font-medium text-gray-500 uppercase mb-1">Arquivos Principais</p>
+                      {renderList(item.arquivos_principais)}
+                    </div>
+                  )}
+                  {item.objetivos && (
+                    <div className="mt-2">
+                      <p className="text-xs font-medium text-gray-500 uppercase mb-1">Objetivos</p>
+                      {renderList(item.objetivos)}
+                    </div>
+                  )}
+                  {item.entregas && (
+                    <div className="mt-2">
+                      <p className="text-xs font-medium text-gray-500 uppercase mb-1">Entregas</p>
+                      {renderList(item.entregas)}
+                    </div>
                   )}
                 </div>
               )}
@@ -101,10 +149,9 @@ const ProjectDetail = () => {
       return (
         <div className="space-y-4">
           {entries.map(([key, value]) => (
-            <Card key={key} className="p-5">
-              <h3 className="font-semibold text-gray-900 mb-2 capitalize">{key.replace(/_/g, ' ')}</h3>
-              {renderList(value)}
-            </Card>
+            <div key={key}>
+              {renderPlanSection(value)}
+            </div>
           ))}
         </div>
       )

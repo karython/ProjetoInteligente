@@ -25,3 +25,16 @@ class UserRepository:
         self.db.commit()
         self.db.refresh(user)
         return user
+
+    def update(self, user: User, nome: str, email: str) -> User:
+        user.nome = nome
+        user.email = email
+        self.db.commit()
+        self.db.refresh(user)
+        return user
+
+    def update_password(self, user: User, senha_hash: str) -> User:
+        user.senha_hash = senha_hash
+        self.db.commit()
+        self.db.refresh(user)
+        return user

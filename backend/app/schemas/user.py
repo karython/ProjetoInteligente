@@ -26,6 +26,16 @@ class UserResponse(BaseModel):
         from_attributes = True
 
 
+class UserUpdate(BaseModel):
+    nome: str
+    email: EmailStr
+
+
+class PasswordChange(BaseModel):
+    senha_atual: str
+    nova_senha: str
+
+
 class Token(BaseModel):
     access_token: str
     token_type: str
