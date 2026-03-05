@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 
+=======
+>>>>>>> frontend
 annotated-types==0.7.0
 anyio==4.12.1
 bcrypt==5.0.0
