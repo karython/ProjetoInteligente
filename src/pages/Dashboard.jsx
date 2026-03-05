@@ -1,15 +1,24 @@
 import { Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 import DashboardLayout from '../layouts/DashboardLayout'
 import Card from '../components/Card'
 import Button from '../components/Button'
-import { mockProjects } from '../data/mockData'
+import { getProjects } from '../api/projects'
 
 const Dashboard = () => {
-  const activeProjects = mockProjects.filter(p => p.status === 'active')
-  const completedProjects = mockProjects.filter(p => p.status === 'completed')
-  const avgProgress = Math.round(
-    mockProjects.reduce((acc, p) => acc + p.progress, 0) / mockProjects.length
-  )
+  const [projects, setProjects] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    getProjects()
+      .then(setProjects)
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const activeProjects = projects.filter(p => p.status === 'active')
+  const completedProjects = projects.filter(p => p.status === 'completed')
 
   return (
     <DashboardLayout>
@@ -47,9 +56,9 @@ const Dashboard = () => {
               <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center text-2xl">
                 📊
               </div>
-              <span className="text-3xl font-bold text-purple-600">{avgProgress}%</span>
+              <span className="text-3xl font-bold text-purple-600">{projects.length}</span>
             </div>
-            <h3 className="text-sm font-semibold text-gray-600">Progresso Médio</h3>
+            <h3 className="text-sm font-semibold text-gray-600">Total de Projetos</h3>
           </Card>
         </div>
 
@@ -66,7 +75,7 @@ const Dashboard = () => {
           </Link>
         </Card>
 
-        {/* Recent Projects */}
+        {/* Projects List */}
         <div>
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-gray-900">Meus Projetos</h2>
@@ -75,48 +84,49 @@ const Dashboard = () => {
             </Link>
           </div>
 
+          {loading && (
+            <p className="text-gray-500 text-center py-8">Carregando projetos...</p>
+          )}
+
+          {error && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700">
+              {error}
+            </div>
+          )}
+
+          {!loading && !error && projects.length === 0 && (
+            <Card className="p-8 text-center text-gray-500">
+              Nenhum projeto ainda. Crie seu primeiro projeto!
+            </Card>
+          )}
+
           <div className="space-y-4">
-            {mockProjects.map((project) => (
+            {projects.map((project) => (
               <Link key={project.id} to={`/project/${project.id}`}>
                 <Card hover className="p-6">
-                  <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-start justify-between mb-2">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-bold text-gray-900">{project.name}</h3>
+                        <h3 className="text-lg font-bold text-gray-900">{project.nome}</h3>
                         <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          project.status === 'active' 
-                            ? 'bg-blue-100 text-blue-700' 
+                          project.status === 'active'
+                            ? 'bg-blue-100 text-blue-700'
                             : 'bg-green-100 text-green-700'
                         }`}>
                           {project.status === 'active' ? 'Em andamento' : 'Concluído'}
                         </span>
+                        {project.plan && (
+                          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">
+                            ✨ Plano gerado
+                          </span>
+                        )}
                       </div>
-                      <p className="text-gray-600 text-sm mb-3">{project.description}</p>
+                      <p className="text-gray-600 text-sm mb-3">{project.descricao}</p>
                       <div className="flex items-center gap-4 text-sm text-gray-500">
-                        <span className="flex items-center gap-1">
-                          💻 {project.framework}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          🗄️ {project.database}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          📅 {new Date(project.deadline).toLocaleDateString('pt-BR')}
-                        </span>
+                        <span>💻 {project.tecnologias}</span>
+                        <span>📅 {new Date(project.prazo).toLocaleDateString('pt-BR')}</span>
+                        <span>⭐ {project.nivel}</span>
                       </div>
-                    </div>
-                  </div>
-
-                  {/* Progress Bar */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2 text-sm">
-                      <span className="font-semibold text-gray-700">Progresso</span>
-                      <span className="font-bold text-primary">{project.progress}%</span>
-                    </div>
-                    <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-primary rounded-full transition-all duration-500"
-                        style={{ width: `${project.progress}%` }}
-                      />
                     </div>
                   </div>
                 </Card>

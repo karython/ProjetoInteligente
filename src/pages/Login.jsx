@@ -3,18 +3,32 @@ import { useState } from 'react'
 import Button from '../components/Button'
 import Input from '../components/Input'
 import Card from '../components/Card'
+import { login } from '../api/auth'
+import { useAuth } from '../context/AuthContext'
 
 const Login = () => {
   const navigate = useNavigate()
+  const { saveToken } = useAuth()
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   })
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    // Simulação de login
-    navigate('/dashboard')
+    setError('')
+    setLoading(true)
+    try {
+      const data = await login({ email: formData.email, senha: formData.password })
+      saveToken(data.access_token)
+      navigate('/dashboard')
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -27,6 +41,12 @@ const Login = () => {
         <Card className="p-8 animate-scale-in">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Bem-vindo de volta</h2>
           <p className="text-gray-600 mb-8">Entre com suas credenciais</p>
+
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+              {error}
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <Input
@@ -57,8 +77,8 @@ const Login = () => {
               </a>
             </div>
 
-            <Button type="submit" className="w-full" size="lg">
-              Entrar
+            <Button type="submit" className="w-full" size="lg" disabled={loading}>
+              {loading ? 'Entrando...' : 'Entrar'}
             </Button>
           </form>
 

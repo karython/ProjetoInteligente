@@ -5,10 +5,13 @@ import Card from '../components/Card'
 import Button from '../components/Button'
 import Input from '../components/Input'
 import Stepper from '../components/Stepper'
+import { createProject, generatePlan } from '../api/projects'
 
 const NewProject = () => {
   const navigate = useNavigate()
   const [currentStep, setCurrentStep] = useState(1)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -24,12 +27,40 @@ const NewProject = () => {
 
   const steps = ['Informações Básicas', 'Tecnologias', 'Prazo', 'Objetivo']
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentStep < 4) {
       setCurrentStep(currentStep + 1)
-    } else {
-      // Gerar planejamento
-      navigate('/project/1')
+      return
+    }
+
+    setLoading(true)
+    setError('')
+    try {
+      const tecnologias = [
+        formData.language,
+        formData.framework,
+        formData.database,
+        formData.hosting,
+      ].filter(Boolean).join(', ')
+
+      const descricao = formData.goal
+        ? `${formData.description}\n\nÁrea: ${formData.area}\n\nObjetivo: ${formData.goal}`
+        : formData.description
+
+      const project = await createProject({
+        nome: formData.name,
+        descricao,
+        nivel: formData.level,
+        tecnologias,
+        prazo: formData.deadline,
+      })
+
+      await generatePlan(project.id)
+
+      navigate(`/project/${project.id}`)
+    } catch (err) {
+      setError(err.message)
+      setLoading(false)
     }
   }
 
@@ -57,11 +88,17 @@ const NewProject = () => {
         </div>
 
         <Card className="p-8">
+          {error && (
+            <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+              {error}
+            </div>
+          )}
+
           {/* Step 1: Informações Básicas */}
           {currentStep === 1 && (
             <div className="space-y-6 animate-in">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Informações Básicas</h2>
-              
+
               <Input
                 label="Nome do Projeto"
                 placeholder="Ex: Sistema de Gerenciamento Escolar"
@@ -167,7 +204,7 @@ const NewProject = () => {
 
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
                 <p className="text-sm text-blue-900">
-                  💡 <strong>Dica:</strong> Com base no prazo, vamos criar um cronograma semanal 
+                  💡 <strong>Dica:</strong> Com base no prazo, vamos criar um cronograma semanal
                   otimizado para você completar o projeto a tempo.
                 </p>
               </div>
@@ -194,7 +231,7 @@ const NewProject = () => {
 
               <div className="bg-green-50 border border-green-200 rounded-xl p-4">
                 <p className="text-sm text-green-900">
-                  ✨ <strong>Tudo pronto!</strong> Vamos gerar um planejamento completo com backlog, 
+                  ✨ <strong>Tudo pronto!</strong> Vamos gerar um planejamento completo com backlog,
                   estrutura de pastas, checklist técnico e cronograma personalizado.
                 </p>
               </div>
@@ -206,14 +243,18 @@ const NewProject = () => {
             <Button
               variant="ghost"
               onClick={handleBack}
-              disabled={currentStep === 1}
+              disabled={currentStep === 1 || loading}
               className="disabled:opacity-50"
             >
               ← Voltar
             </Button>
 
-            <Button onClick={handleNext}>
-              {currentStep === 4 ? '✨ Gerar Planejamento Inteligente' : 'Próximo →'}
+            <Button onClick={handleNext} disabled={loading}>
+              {loading
+                ? 'Gerando planejamento...'
+                : currentStep === 4
+                ? '✨ Gerar Planejamento Inteligente'
+                : 'Próximo →'}
             </Button>
           </div>
         </Card>

@@ -3,9 +3,12 @@ import { useState } from 'react'
 import Button from '../components/Button'
 import Input from '../components/Input'
 import Card from '../components/Card'
+import { register } from '../api/auth'
+import { useAuth } from '../context/AuthContext'
 
 const Signup = () => {
   const navigate = useNavigate()
+  const { saveToken } = useAuth()
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -13,11 +16,32 @@ const Signup = () => {
     confirmPassword: '',
     userType: 'student'
   })
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    // Simulação de cadastro
-    navigate('/dashboard')
+    setError('')
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('As senhas não coincidem')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const data = await register({
+        nome: formData.name,
+        email: formData.email,
+        senha: formData.password,
+      })
+      saveToken(data.access_token)
+      navigate('/dashboard')
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -30,6 +54,12 @@ const Signup = () => {
         <Card className="p-8 animate-scale-in">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Criar sua conta</h2>
           <p className="text-gray-600 mb-8">Comece a organizar seus projetos</p>
+
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+              {error}
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <Input
@@ -100,17 +130,16 @@ const Signup = () => {
               </div>
             </div>
 
-            <Button type="submit" className="w-full" size="lg">
-              Criar Conta
+            <Button type="submit" className="w-full" size="lg" disabled={loading}>
+              {loading ? 'Criando conta...' : 'Criar Conta'}
             </Button>
           </form>
 
           <p className="text-center text-gray-600 mt-6">
             Já tem uma conta?{' '}
             <Link to="/login" className="text-primary font-semibold hover:underline">
-              Fazer login 
+              Fazer login
             </Link>
-            
           </p>
           <p className="text-center text-gray-400 mt-4 text-sm">
             <Link to="/" className="text-primary font-semibold hover:underline ml-4">⟵ Voltar para Tela Inicial</Link>
