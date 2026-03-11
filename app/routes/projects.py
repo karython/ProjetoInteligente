@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.models.user import User
-from app.schemas.project import ProjectCreate, ProjectResponse, ProjectWithPlanResponse
+from app.schemas.project import ProjectCreate, ProjectResponse, ProjectWithPlanResponse, ProjectProgressUpdate
 from app.services.project_service import ProjectService
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
@@ -38,6 +38,17 @@ def get_project(
 ):
     project_service = ProjectService(db)
     return project_service.get_project(project_id, current_user)
+
+
+@router.put("/{project_id}", response_model=ProjectWithPlanResponse)
+def update_project_progress(
+    project_id: int,
+    data: ProjectProgressUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    project_service = ProjectService(db)
+    return project_service.update_progress(project_id, current_user, data)
 
 
 @router.delete("/{project_id}", status_code=204)

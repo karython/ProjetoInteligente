@@ -42,3 +42,7 @@ class ProjectPlanResponse(BaseModel):
 
 class ProjectWithPlanResponse(ProjectResponse):
     plan: Optional[ProjectPlanResponse] = None
+
+
+class ProjectProgressUpdate(BaseModel):
+    backlog: Dict[str, Any]
