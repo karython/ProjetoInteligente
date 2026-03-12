@@ -16,8 +16,7 @@ app = FastAPI(
 # Use explicit origins for the production domain
 ALLOWED_ORIGINS = [
     "https://planejador-inteligente.karythongomes.com.br",
-    "http://localhost:5173",  # para desenvolvimento local
-    "http://localhost:3000",  # se usar outra porta local
+ # se usar outra porta local
 ]
 
 app.add_middleware(
