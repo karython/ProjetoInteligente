@@ -21,7 +21,10 @@ class UserResponse(BaseModel):
     email: str
     plano: str
     data_criacao: datetime
-    
+    subscription_status: Optional[str] = None
+    subscription_due_date: Optional[datetime] = None
+    grace_period_end: Optional[datetime] = None
+
     class Config:
         from_attributes = True
 

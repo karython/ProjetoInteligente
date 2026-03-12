@@ -4,11 +4,12 @@ from pydantic_settings import BaseSettings
 from typing import Optional
 
 # Resolve to the project root .env regardless of where the server is run from
-_ENV_FILE = str(Path(__file__).resolve().parent.parent.parent.parent / ".env")
+# app/core/config.py → app/core → app → project-booster (root)
+_ENV_FILE = str(Path(__file__).resolve().parent.parent.parent / ".env")
 
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "NOME_DO_SISTEMA"
+    PROJECT_NAME: str = "Planejador De Projetos"
     VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
 
@@ -24,6 +25,11 @@ class Settings(BaseSettings):
 
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str = "llama3:8b-instruct"
+
+    # Asaas
+    ASAAS_API_KEY: str = ""
+    ASAAS_BASE_URL: str = "https://sandbox.asaas.com/api/v3"  # Produção: https://api.asaas.com/v3
+    ASAAS_PLAN_VALUE: float = 29.90
 
     class Config:
         case_sensitive = True
