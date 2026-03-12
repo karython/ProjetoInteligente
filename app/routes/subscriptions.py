@@ -94,7 +94,7 @@ def get_subscription_status(
     payment_link: Optional[str] = None
     if (
         current_user.asaas_subscription_id
-        and current_user.subscription_status in ("PENDING", "OVERDUE")
+        and current_user.subscription_status in (SubscriptionStatus.ACTIVE, SubscriptionStatus.OVERDUE)
     ):
         try:
             asaas = AsaasService()

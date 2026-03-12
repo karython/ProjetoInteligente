@@ -32,7 +32,9 @@ class PlanService:
             descricao=project.descricao,
             nivel=project.nivel,
             tecnologias=project.tecnologias,
-            prazo=project.prazo
+            prazo=project.prazo,
+            tipo_cronograma=getattr(project, 'tipo_cronograma', 'semanal'),
+            is_pro=(user.plano == PlanType.PRO)
         )
         
         project_plan = self.plan_repo.create(

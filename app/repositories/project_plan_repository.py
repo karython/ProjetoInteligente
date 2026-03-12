@@ -43,5 +43,13 @@ class ProjectPlanRepository:
         self.db.refresh(plan)
         return plan
 
+    def update_plan(self, plan: ProjectPlan, backlog: Dict[str, Any], checklist_tecnico: Optional[Dict[str, Any]] = None) -> ProjectPlan:
+        plan.backlog = backlog
+        if checklist_tecnico is not None:
+            plan.checklist_tecnico = checklist_tecnico
+        self.db.commit()
+        self.db.refresh(plan)
+        return plan
+
     def count_by_project(self, project_id: int) -> int:
         return self.db.query(ProjectPlan).filter(ProjectPlan.project_id == project_id).count()

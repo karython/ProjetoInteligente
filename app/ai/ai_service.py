@@ -26,23 +26,35 @@ class AIService:
         descricao: str,
         nivel: str,
         tecnologias: str,
-        prazo: str
+        prazo: str,
+        tipo_cronograma: str = "semanal",
+        is_pro: bool = False
     ) -> Dict[str, Any]:
-        prompt = self._build_prompt(nome, descricao, nivel, tecnologias, prazo)
+        prompt = self._build_prompt(nome, descricao, nivel, tecnologias, prazo, tipo_cronograma, is_pro)
         
         if self.provider == "GROQ":
-            return self._generate_with_groq(prompt)
+            return self._generate_with_groq(prompt, is_pro)
         else:
             return self._generate_with_ollama(prompt)
     
-    def _generate_with_groq(self, prompt: str) -> Dict[str, Any]:
+    def _generate_with_groq(self, prompt: str, is_pro: bool = False) -> Dict[str, Any]:
         """Gera planejamento usando API Groq"""
+        system_msg = (
+            "Você é um engenheiro fullstack sênior com 15 anos de experiência em projetos de produção de alta escala. "
+            "Domina arquitetura de software, DevOps, CI/CD, testes automatizados, clean code e padrões de mercado. "
+            "Gere planejamentos extremamente detalhados e prontos para produção profissional, "
+            "incluindo estruturas de pastas completas, backlogs granulares com critérios de aceite técnicos e cronogramas realistas. "
+            "Retorne APENAS JSON válido, sem markdown, sem explicações."
+        ) if is_pro else (
+            "Você é um arquiteto de software especializado em planejamento de projetos. "
+            "Retorne APENAS JSON válido, sem markdown, sem explicações."
+        )
         try:
             chat_completion = self.client.chat.completions.create(
                 messages=[
                     {
                         "role": "system",
-                        "content": "Você é um arquiteto de software especializado em planejamento de projetos. Retorne APENAS JSON válido, sem markdown, sem explicações."
+                        "content": system_msg
                     },
                     {
                         "role": "user",
@@ -110,15 +122,59 @@ class AIService:
         descricao: str,
         nivel: str,
         tecnologias: str,
-        prazo: str
+        prazo: str,
+        tipo_cronograma: str = "semanal",
+        is_pro: bool = False
     ) -> str:
+        if tipo_cronograma == "diario":
+            cronograma_instrucao = (
+                "Organize o cronograma POR DIA, calculando os dias úteis disponíveis "
+                "entre hoje e o prazo. Use a chave 'dias' (lista de objetos com 'numero', "
+                "'data_referencia' (ex: 'Dia 1', 'Dia 2'...), 'objetivos' e 'tarefas')."
+            )
+            cronograma_schema = """\"cronograma_sugerido\": {{
+    \"tipo\": \"diario\",
+    \"dias\": [
+      {{
+        \"numero\": 1,
+        \"data_referencia\": \"Dia 1\",
+        \"objetivos\": [\"string\"],
+        \"tarefas\": [\"string\"]
+      }}
+    ]
+  }}"""
+        else:
+            cronograma_instrucao = (
+                "Organize o cronograma POR SEMANA, dividindo o prazo total em semanas. "
+                "Use a chave 'semanas' (lista de objetos com 'numero', 'objetivos' e 'entregas')."
+            )
+            cronograma_schema = """\"cronograma_sugerido\": {{
+    \"tipo\": \"semanal\",
+    \"semanas\": [
+      {{
+        \"numero\": 1,
+        \"objetivos\": [\"string\"],
+        \"entregas\": [\"string\"]
+      }}
+    ]
+  }}"""
+
+        nivel_instrucao = (
+            "Gere um planejamento de nível PROFISSIONAL e PRODUCTION-READY: "
+            "épicos bem segmentados (mínimo 5), user stories detalhadas com critérios de aceite técnicos, "
+            "estrutura de pastas completa como um projeto real de produção (incluindo configs, CI/CD, testes, docs), "
+            "checklist técnico exaustivo cobrindo segurança, performance, testes e deploy."
+        ) if is_pro else "Gere um planejamento completo e profissional."
+
         return f"""Crie um planejamento completo e estruturado para o seguinte projeto:
 
 Nome: {nome}
 Descrição: {descricao}
 Nível: {nivel}
 Tecnologias: {tecnologias}
-Prazo: {prazo}
+Prazo final: {prazo}
+Organização do cronograma: {tipo_cronograma.upper()} — {cronograma_instrucao}
+Instrução especial: {nivel_instrucao}
 
 Retorne APENAS um JSON válido (sem markdown, sem explicações) com a seguinte estrutura:
 
@@ -173,18 +229,10 @@ Retorne APENAS um JSON válido (sem markdown, sem explicações) com a seguinte 
       }}
     ]
   }},
-  "cronograma_sugerido": {{
-    "semanas": [
-      {{
-        "numero": 1,
-        "objetivos": ["string"],
-        "entregas": ["string"]
-      }}
-    ]
-  }}
+  {cronograma_schema}
 }}
 
-Gere um planejamento detalhado e profissional baseado nas informações fornecidas."""
+Gere um planejamento detalhado e profissional. O cronograma deve cobrir do início até o prazo ({prazo}) respeitando a organização {tipo_cronograma}."""
     
     def _validate_plan_structure(self, plan_data: Dict[str, Any]) -> None:
         """Valida estrutura do JSON retornado"""
