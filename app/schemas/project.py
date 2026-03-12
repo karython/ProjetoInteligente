@@ -10,6 +10,7 @@ class ProjectCreate(BaseModel):
     nivel: str
     tecnologias: str
     prazo: str
+    tipo_cronograma: str = "semanal"  # 'semanal' ou 'diario'
 
 
 class ProjectResponse(BaseModel):
@@ -20,6 +21,7 @@ class ProjectResponse(BaseModel):
     nivel: str
     tecnologias: str
     prazo: str
+    tipo_cronograma: str
     status: str
     data_criacao: datetime
     

@@ -9,7 +9,7 @@ class ProjectRepository:
     def __init__(self, db: Session):
         self.db = db
     
-    def create(self, user_id: int, nome: str, descricao: str, nivel: str, tecnologias: str, prazo: str) -> Project:
+    def create(self, user_id: int, nome: str, descricao: str, nivel: str, tecnologias: str, prazo: str, tipo_cronograma: str = "semanal") -> Project:
         project = Project(
             user_id=user_id,
             nome=nome,
@@ -17,6 +17,7 @@ class ProjectRepository:
             nivel=nivel,
             tecnologias=tecnologias,
             prazo=prazo,
+            tipo_cronograma=tipo_cronograma,
             status=ProjectStatus.ATIVO
         )
         self.db.add(project)

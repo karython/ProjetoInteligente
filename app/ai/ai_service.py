@@ -26,9 +26,10 @@ class AIService:
         descricao: str,
         nivel: str,
         tecnologias: str,
-        prazo: str
+        prazo: str,
+        tipo_cronograma: str = "semanal"
     ) -> Dict[str, Any]:
-        prompt = self._build_prompt(nome, descricao, nivel, tecnologias, prazo)
+        prompt = self._build_prompt(nome, descricao, nivel, tecnologias, prazo, tipo_cronograma)
         
         if self.provider == "GROQ":
             return self._generate_with_groq(prompt)
@@ -110,15 +111,50 @@ class AIService:
         descricao: str,
         nivel: str,
         tecnologias: str,
-        prazo: str
+        prazo: str,
+        tipo_cronograma: str = "semanal"
     ) -> str:
+        if tipo_cronograma == "diario":
+            cronograma_instrucao = (
+                "Organize o cronograma POR DIA, calculando os dias úteis disponíveis "
+                "entre hoje e o prazo. Use a chave 'dias' (lista de objetos com 'numero', "
+                "'data_referencia' (ex: 'Dia 1', 'Dia 2'...), 'objetivos' e 'tarefas')."
+            )
+            cronograma_schema = """\"cronograma_sugerido\": {{
+    \"tipo\": \"diario\",
+    \"dias\": [
+      {{
+        \"numero\": 1,
+        \"data_referencia\": \"Dia 1\",
+        \"objetivos\": [\"string\"],
+        \"tarefas\": [\"string\"]
+      }}
+    ]
+  }}"""
+        else:
+            cronograma_instrucao = (
+                "Organize o cronograma POR SEMANA, dividindo o prazo total em semanas. "
+                "Use a chave 'semanas' (lista de objetos com 'numero', 'objetivos' e 'entregas')."
+            )
+            cronograma_schema = """\"cronograma_sugerido\": {{
+    \"tipo\": \"semanal\",
+    \"semanas\": [
+      {{
+        \"numero\": 1,
+        \"objetivos\": [\"string\"],
+        \"entregas\": [\"string\"]
+      }}
+    ]
+  }}"""
+
         return f"""Crie um planejamento completo e estruturado para o seguinte projeto:
 
 Nome: {nome}
 Descrição: {descricao}
 Nível: {nivel}
 Tecnologias: {tecnologias}
-Prazo: {prazo}
+Prazo final: {prazo}
+Organização do cronograma: {tipo_cronograma.upper()} — {cronograma_instrucao}
 
 Retorne APENAS um JSON válido (sem markdown, sem explicações) com a seguinte estrutura:
 
@@ -173,18 +209,10 @@ Retorne APENAS um JSON válido (sem markdown, sem explicações) com a seguinte 
       }}
     ]
   }},
-  "cronograma_sugerido": {{
-    "semanas": [
-      {{
-        "numero": 1,
-        "objetivos": ["string"],
-        "entregas": ["string"]
-      }}
-    ]
-  }}
+  {cronograma_schema}
 }}
 
-Gere um planejamento detalhado e profissional baseado nas informações fornecidas."""
+Gere um planejamento detalhado e profissional. O cronograma deve cobrir do início até o prazo ({prazo}) respeitando a organização {tipo_cronograma}."""
     
     def _validate_plan_structure(self, plan_data: Dict[str, Any]) -> None:
         """Valida estrutura do JSON retornado"""

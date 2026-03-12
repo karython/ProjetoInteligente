@@ -185,7 +185,8 @@ export const projectAPI = {
         tecnologias: projectData.language ? 
           `${projectData.language}, ${projectData.framework || ''}, ${projectData.database || ''}`.trim() 
           : '',                                     // tecnologias (português) - concatena tudo
-        prazo: projectData.deadline                // prazo (português)
+        prazo: projectData.deadline,               // prazo (português)
+        tipo_cronograma: projectData.tipo_cronograma || 'semanal'
       }),
     })
   },

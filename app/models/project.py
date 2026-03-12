@@ -22,6 +22,7 @@ class Project(Base):
     nivel = Column(String, nullable=False)
     tecnologias = Column(Text, nullable=False)
     prazo = Column(String, nullable=False)
+    tipo_cronograma = Column(String, default="semanal", nullable=False)  # 'semanal' ou 'diario'
     status = Column(Enum(ProjectStatus), default=ProjectStatus.ATIVO, nullable=False)
     data_criacao = Column(DateTime, default=datetime.utcnow, nullable=False)
     

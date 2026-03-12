@@ -165,7 +165,7 @@ const ProjectDetail = () => {
     { id: 'structure', label: 'Estrutura de Pastas', icon: '📁' },
     { id: 'checklist', label: 'Checklist Técnico', icon: '✅' },
     { id: 'timeline', label: 'Sequência Ideal', icon: '⏱️' },
-    { id: 'schedule', label: 'Cronograma', icon: '📅' },
+    { id: 'schedule', label: 'Cronograma', icon: '📅' },  // semanal ou diário
   ]
 
   const renderFolderTree = (node, level = 0) => {

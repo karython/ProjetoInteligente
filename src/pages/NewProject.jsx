@@ -21,6 +21,7 @@ const NewProject = () => {
     database: '',
     hosting: '',
     deadline: '',
+    tipo_cronograma: 'semanal',
     goal: ''
   })
 
@@ -43,6 +44,7 @@ const NewProject = () => {
           database: formData.database,
           hosting: formData.hosting,
           deadline: formData.deadline,
+          tipo_cronograma: formData.tipo_cronograma,
           goal: formData.goal
         }
 
@@ -189,7 +191,7 @@ const NewProject = () => {
           {/* Step 3: Prazo */}
           {currentStep === 3 && (
             <div className="space-y-6 animate-in">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Prazo</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Prazo e Organização</h2>
 
               <Input
                 label="Data de Entrega"
@@ -198,10 +200,39 @@ const NewProject = () => {
                 onChange={(e) => updateField('deadline', e.target.value)}
               />
 
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                  Tipo de Cronograma
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { value: 'semanal', label: 'Por Semana', icon: '📅', desc: 'Planejamento dividido em semanas' },
+                    { value: 'diario', label: 'Por Dia', icon: '📆', desc: 'Planejamento detalhado dia a dia' },
+                  ].map((tipo) => (
+                    <button
+                      key={tipo.value}
+                      type="button"
+                      onClick={() => updateField('tipo_cronograma', tipo.value)}
+                      className={`p-4 rounded-xl border-2 text-left transition-all ${
+                        formData.tipo_cronograma === tipo.value
+                          ? 'border-primary bg-primary/5 text-primary'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="text-2xl mb-1">{tipo.icon}</div>
+                      <div className="text-sm font-semibold">{tipo.label}</div>
+                      <div className="text-xs text-gray-500 mt-1">{tipo.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
                 <p className="text-sm text-blue-900">
-                  💡 <strong>Dica:</strong> Com base no prazo, vamos criar um cronograma semanal 
-                  otimizado para você completar o projeto a tempo.
+                  💡 <strong>Dica:</strong> O cronograma será gerado do início até a data de entrega,
+                  {formData.tipo_cronograma === 'diario'
+                    ? ' com tarefas específicas para cada dia útil.'
+                    : ' agrupando as atividades por semana.'}
                 </p>
               </div>
             </div>

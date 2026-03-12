@@ -30,7 +30,8 @@ class ProjectService:
             descricao=project_data.descricao,
             nivel=project_data.nivel,
             tecnologias=project_data.tecnologias,
-            prazo=project_data.prazo
+            prazo=project_data.prazo,
+            tipo_cronograma=project_data.tipo_cronograma
         )
         
         return project
