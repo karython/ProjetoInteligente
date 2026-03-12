@@ -195,7 +195,17 @@ export const projectAPI = {
   update: async (id, projectData) => {
     return request(`/api/v1/projects/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(projectData),
+      body: JSON.stringify({
+        backlog: projectData.backlog,
+        checklist_tecnico: projectData.checklist_tecnico ?? null,
+      }),
+    })
+  },
+
+  regeneratePlan: async (projectId, { novo_titulo, novo_prazo } = {}) => {
+    return request(`/api/v1/projects/${projectId}/regenerate-plan`, {
+      method: 'POST',
+      body: JSON.stringify({ novo_titulo: novo_titulo || null, novo_prazo: novo_prazo || null }),
     })
   },
 

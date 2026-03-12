@@ -27,23 +27,35 @@ class AIService:
         nivel: str,
         tecnologias: str,
         prazo: str,
-        tipo_cronograma: str = "semanal"
+        tipo_cronograma: str = "semanal",
+        is_pro: bool = False
     ) -> Dict[str, Any]:
-        prompt = self._build_prompt(nome, descricao, nivel, tecnologias, prazo, tipo_cronograma)
+        prompt = self._build_prompt(nome, descricao, nivel, tecnologias, prazo, tipo_cronograma, is_pro)
         
         if self.provider == "GROQ":
-            return self._generate_with_groq(prompt)
+            return self._generate_with_groq(prompt, is_pro)
         else:
             return self._generate_with_ollama(prompt)
     
-    def _generate_with_groq(self, prompt: str) -> Dict[str, Any]:
+    def _generate_with_groq(self, prompt: str, is_pro: bool = False) -> Dict[str, Any]:
         """Gera planejamento usando API Groq"""
+        system_msg = (
+            "Você é um engenheiro fullstack sênior com 15+ anos em projetos de produção de alta escala. "
+            "Domina arquitetura de software, DDD, Clean Architecture, DevOps, CI/CD, testes e segurança. "
+            "Gere planejamentos EXTREMAMENTE detalhados e production-ready: épicos granulares (mínimo 5), "
+            "user stories com critérios de aceite técnicos, estrutura de pastas completa com /tests, /docs, "
+            "/.github/workflows, checklist cobrindo segurança, performance, testes e observabilidade. "
+            "Retorne APENAS JSON válido, sem markdown, sem explicações."
+        ) if is_pro else (
+            "Você é um arquiteto de software especializado em planejamento de projetos. "
+            "Retorne APENAS JSON válido, sem markdown, sem explicações."
+        )
         try:
             chat_completion = self.client.chat.completions.create(
                 messages=[
                     {
                         "role": "system",
-                        "content": "Você é um arquiteto de software especializado em planejamento de projetos. Retorne APENAS JSON válido, sem markdown, sem explicações."
+                        "content": system_msg
                     },
                     {
                         "role": "user",
@@ -112,8 +124,14 @@ class AIService:
         nivel: str,
         tecnologias: str,
         prazo: str,
-        tipo_cronograma: str = "semanal"
+        tipo_cronograma: str = "semanal",
+        is_pro: bool = False
     ) -> str:
+        nivel_instrucao = (
+            "Gere no mínimo 5 épicos detalhados, user stories com critérios de aceite técnicos, "
+            "estrutura de pastas production-ready (incluindo /tests, /docs, /.github/workflows, lint/format configs), "
+            "checklist técnico exaustivo cobrindo segurança, performance, testes e deploy."
+        ) if is_pro else "Gere um planejamento completo e profissional."
         if tipo_cronograma == "diario":
             cronograma_instrucao = (
                 "Organize o cronograma POR DIA, calculando os dias úteis disponíveis "
@@ -155,6 +173,7 @@ Nível: {nivel}
 Tecnologias: {tecnologias}
 Prazo final: {prazo}
 Organização do cronograma: {tipo_cronograma.upper()} — {cronograma_instrucao}
+Qualidade esperada: {nivel_instrucao}
 
 Retorne APENAS um JSON válido (sem markdown, sem explicações) com a seguinte estrutura:
 

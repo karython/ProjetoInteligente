@@ -48,3 +48,9 @@ class ProjectWithPlanResponse(ProjectResponse):
 
 class ProjectProgressUpdate(BaseModel):
     backlog: Dict[str, Any]
+    checklist_tecnico: Optional[Dict[str, Any]] = None
+
+
+class RegeneratePlanRequest(BaseModel):
+    novo_titulo: Optional[str] = None
+    novo_prazo: Optional[str] = None

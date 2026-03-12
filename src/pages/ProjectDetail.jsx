@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import DashboardLayout from '../layouts/DashboardLayout'
 import Card from '../components/Card'
-import { projectAPI } from '../services/api'
+import { projectAPI, planAPI } from '../services/api'
 import { mockProjects, folderStructure, technicalChecklist, timeline, schedule } from '../data/mockData'
 
 const ProjectDetail = () => {
@@ -17,9 +17,14 @@ const ProjectDetail = () => {
   const [addTaskState, setAddTaskState] = useState(null) // { catIndex, value }
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [isPro, setIsPro] = useState(false)
+  const [regenModal, setRegenModal] = useState(false)
+  const [regenData, setRegenData] = useState({ novo_titulo: '', novo_prazo: '' })
+  const [regenerating, setRegenerating] = useState(false)
 
   useEffect(() => {
     loadProject()
+    planAPI.getStatus().then(s => setIsPro(s?.plano === 'PRO' && s?.subscription_status === 'ACTIVE')).catch(() => {})
   }, [id])
 
   const loadProject = async () => {
@@ -95,6 +100,119 @@ const ProjectDetail = () => {
       setError('Erro ao excluir projeto: ' + err.message)
       setDeleting(false)
       setConfirmDelete(false)
+    }
+  }
+
+  const downloadMarkdown = () => {
+    if (!project || !localPlan) return
+    const lines = []
+    lines.push(`# ${project.nome}\n`)
+    lines.push(`> ${project.descricao}\n`)
+    lines.push(`**Prazo:** ${project.prazo}  |  **Nível:** ${project.nivel}  |  **Tecnologias:** ${project.tecnologias}\n`)
+    lines.push('---\n')
+    lines.push('## Backlog\n')
+    ;(localPlan.backlog?.epicos || []).forEach(ep => {
+      lines.push(`### ${ep.titulo} [${ep.prioridade}]`)
+      lines.push(ep.descricao || '')
+      ;(ep.user_stories || []).forEach(s => {
+        lines.push(`\n#### ${s.titulo}`)
+        lines.push(s.descricao || '')
+        if (s.criterios_aceite?.length) {
+          lines.push('**Critérios de Aceite:**')
+          s.criterios_aceite.forEach(c => lines.push(`- ${c}`))
+        }
+      })
+      lines.push('')
+    })
+    lines.push('\n## Estrutura de Pastas\n')
+    ;(localPlan.estrutura_pastas?.diretorios || []).forEach(d => {
+      lines.push(`### \`${d.caminho}\``)
+      lines.push(d.descricao || '')
+      if (d.arquivos_principais?.length) lines.push(d.arquivos_principais.map(f => `- \`${f}\``).join('\n'))
+      lines.push('')
+    })
+    lines.push('\n## Checklist Técnico\n')
+    ;(localPlan.checklist_tecnico?.itens || []).forEach(cat => {
+      lines.push(`### ${cat.categoria}`)
+      ;(cat.tarefas || []).forEach(t => lines.push(`- [${t.completed ? 'x' : ' '}] **${t.titulo}** — ${t.descricao || ''}`))
+      lines.push('')
+    })
+    lines.push('\n## Cronograma\n')
+    const crono = localPlan.cronograma_sugerido
+    if (crono?.semanas) {
+      crono.semanas.forEach(s => {
+        lines.push(`### Semana ${s.numero}`)
+        ;(s.objetivos || []).forEach(o => lines.push(`- ${o}`))
+        ;(s.entregas || []).forEach(e => lines.push(`- ✅ ${e}`))
+        lines.push('')
+      })
+    } else if (crono?.dias) {
+      crono.dias.forEach(d => {
+        lines.push(`### ${d.data_referencia || 'Dia ' + d.numero}`)
+        ;(d.objetivos || []).forEach(o => lines.push(`- ${o}`))
+        ;(d.tarefas || []).forEach(t => lines.push(`  - ${t}`))
+        lines.push('')
+      })
+    }
+    const blob = new Blob([lines.join('\n')], { type: 'text/markdown' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${(project.nome || 'projeto').replace(/\s+/g, '-')}-planejamento.md`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const downloadPDF = () => {
+    if (!project || !localPlan) return
+    const epicos = (localPlan.backlog?.epicos || []).map(ep =>
+      `<h3>${ep.titulo} <span style="font-size:12px;color:#666">[${ep.prioridade}]</span></h3>
+       <p>${ep.descricao || ''}</p>
+       ${(ep.user_stories || []).map(s =>
+         `<div style="margin-left:16px;border-left:3px solid #8b5cf6;padding-left:12px;margin-bottom:8px">
+           <b>${s.titulo}</b><p style="margin:4px 0">${s.descricao || ''}</p>
+           ${s.criterios_aceite?.length ? '<ul>' + s.criterios_aceite.map(c => `<li>${c}</li>`).join('') + '</ul>' : ''}
+         </div>`).join('')}`
+    ).join('')
+    const crono = localPlan.cronograma_sugerido
+    const cronoHtml = (crono?.semanas || crono?.dias || []).map(item => {
+      const label = crono?.semanas ? `Semana ${item.numero}` : (item.data_referencia || `Dia ${item.numero}`)
+      const items = [...(item.objetivos || []).map(o => `<li>${o}</li>`), ...(item.entregas || item.tarefas || []).map(e => `<li>✅ ${e}</li>`)]
+      return `<div style="margin-bottom:12px"><b>${label}</b><ul>${items.join('')}</ul></div>`
+    }).join('')
+    const checklist = (localPlan.checklist_tecnico?.itens || []).map(cat =>
+      `<h4>${cat.categoria}</h4><ul>${(cat.tarefas || []).map(t =>
+        `<li>[${t.completed ? '✓' : ' '}] <b>${t.titulo}</b> — ${t.descricao || ''}</li>`).join('')}</ul>`
+    ).join('')
+    const printWin = window.open('', '_blank')
+    printWin.document.write(`<!DOCTYPE html><html><head><title>${project.nome} — Planejamento</title>
+      <style>body{font-family:sans-serif;max-width:900px;margin:0 auto;padding:32px;color:#111}
+      h1{color:#8b5cf6}h2{border-bottom:2px solid #8b5cf6;padding-bottom:4px;margin-top:32px}
+      @media print{.no-print{display:none}}</style></head><body>
+      <button class="no-print" onclick="window.print()" style="background:#8b5cf6;color:#fff;border:none;padding:10px 24px;border-radius:8px;cursor:pointer;font-size:14px;margin-bottom:24px">🖨️ Salvar como PDF</button>
+      <h1>${project.nome}</h1><p>${project.descricao || ''}</p>
+      <p><b>Prazo:</b> ${project.prazo} &nbsp; <b>Nível:</b> ${project.nivel} &nbsp; <b>Tecnologias:</b> ${project.tecnologias}</p>
+      <h2>Backlog</h2>${epicos}
+      <h2>Checklist Técnico</h2>${checklist}
+      <h2>Cronograma</h2>${cronoHtml}
+      </body></html>`)
+    printWin.document.close()
+  }
+
+  const handleRegenerate = async () => {
+    setRegenerating(true)
+    try {
+      await projectAPI.regeneratePlan(id, {
+        novo_titulo: regenData.novo_titulo || undefined,
+        novo_prazo: regenData.novo_prazo || undefined,
+      })
+      await loadProject()
+      setRegenModal(false)
+      setRegenData({ novo_titulo: '', novo_prazo: '' })
+    } catch (err) {
+      setError('Erro ao re-gerar: ' + err.message)
+    } finally {
+      setRegenerating(false)
     }
   }
 
@@ -208,6 +326,30 @@ const ProjectDetail = () => {
             </Link>
             <div className="flex items-center gap-3">
               {saving && <span className="text-sm text-gray-500">Salvando...</span>}
+              {isPro && localPlan && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={downloadMarkdown}
+                    title="Baixar como Markdown (README)"
+                    className="px-3 py-1.5 text-xs font-semibold text-violet-700 border border-violet-200 rounded-lg hover:bg-violet-50 transition-colors"
+                  >
+                    ⬇ Markdown
+                  </button>
+                  <button
+                    onClick={downloadPDF}
+                    title="Visualizar e salvar como PDF"
+                    className="px-3 py-1.5 text-xs font-semibold text-violet-700 border border-violet-200 rounded-lg hover:bg-violet-50 transition-colors"
+                  >
+                    ⬇ PDF
+                  </button>
+                  <button
+                    onClick={() => setRegenModal(true)}
+                    className="px-3 py-1.5 text-xs font-semibold text-white bg-violet-600 rounded-lg hover:bg-violet-700 transition-colors"
+                  >
+                    ♻ Re-gerar Plano
+                  </button>
+                </div>
+              )}
               {!confirmDelete ? (
                 <button
                   onClick={() => setConfirmDelete(true)}
@@ -667,6 +809,53 @@ const ProjectDetail = () => {
         </div>
       </div>
     </DashboardLayout>
+
+      {regenModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setRegenModal(false)}>
+          <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full" onClick={e => e.stopPropagation()}>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Re-gerar Planejamento</h2>
+            <p className="text-sm text-gray-500 mb-6">
+              O plano atual será substituído. Os campos abaixo são opcionais — deixe em branco para manter os valores atuais.
+            </p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Novo título (opcional)</label>
+                <input
+                  type="text"
+                  value={regenData.novo_titulo}
+                  onChange={e => setRegenData(p => ({ ...p, novo_titulo: e.target.value }))}
+                  placeholder={project?.nome}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Nova data de entrega (opcional)</label>
+                <input
+                  type="date"
+                  value={regenData.novo_prazo}
+                  onChange={e => setRegenData(p => ({ ...p, novo_prazo: e.target.value }))}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={handleRegenerate}
+                disabled={regenerating}
+                className="flex-1 py-2.5 text-sm font-semibold text-white bg-violet-600 rounded-xl hover:bg-violet-700 disabled:opacity-50 transition-colors"
+              >
+                {regenerating ? '⏳ Gerando...' : '✨ Re-gerar'}
+              </button>
+              <button
+                onClick={() => { setRegenModal(false); setRegenData({ novo_titulo: '', novo_prazo: '' }) }}
+                className="flex-1 py-2.5 text-sm font-semibold text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
   )
 }
 

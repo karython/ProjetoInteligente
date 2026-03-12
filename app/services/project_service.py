@@ -66,11 +66,15 @@ class ProjectService:
                 detail="Project plan not found"
             )
 
-        self.plan_repo.update_backlog(plan, data.backlog)
+        self.plan_repo.update_plan(plan, data.backlog, data.checklist_tecnico)
 
-        # Verifica se todas as tarefas do backlog estão concluídas
-        tarefas = data.backlog.get("tarefas", [])
-        if tarefas and all(t.get("feito") for t in tarefas):
+        # Verifica conclusão via user_stories dos épicos
+        all_stories = [
+            story
+            for epico in data.backlog.get("epicos", [])
+            for story in epico.get("user_stories", [])
+        ]
+        if all_stories and all(s.get("completed", False) for s in all_stories):
             self.project_repo.update_status(project, ProjectStatus.CONCLUIDO)
         elif project.status == ProjectStatus.CONCLUIDO:
             self.project_repo.update_status(project, ProjectStatus.ATIVO)
