@@ -255,28 +255,30 @@ export const taskAPI = {
 }
 
 // ========================================
-// PLANOS (não aparecem na imagem)
+// ASSINATURAS
 // ========================================
 
 export const planAPI = {
-  // Obter planos disponíveis
-  getPlans: async () => {
-    return request('/api/v1/plans')
-  },
-
-  // Criar assinatura
-  subscribe: async (planId) => {
+  // Criar assinatura PRO no Asaas
+  // billing_type: "BOLETO" | "CREDIT_CARD" | "PIX" etc
+  // cpf_cnpj: CPF ou CNPJ do cliente
+  subscribe: async (billing_type, cpf_cnpj) => {
     return request('/api/v1/subscriptions', {
       method: 'POST',
-      body: JSON.stringify({ plan_id: planId }),
+      body: JSON.stringify({ billing_type, cpf_cnpj }),
     })
   },
 
-  // Cancelar assinatura
+  // Cancelar assinatura PRO (downgrade para free)
   cancel: async () => {
-    return request('/api/v1/subscriptions/cancel', {
-      method: 'POST',
+    return request('/api/v1/subscriptions', {
+      method: 'DELETE',
     })
+  },
+
+  // Obter status atual da assinatura
+  getStatus: async () => {
+    return request('/api/v1/subscriptions/status')
   },
 }
 

@@ -3,7 +3,7 @@ import DashboardLayout from '../layouts/DashboardLayout'
 import Card from '../components/Card'
 import Button from '../components/Button'
 import Input from '../components/Input'
-import { userAPI } from '../services/api'
+import { userAPI, planAPI } from '../services/api'
 
 const Profile = () => {
   const [profileData, setProfileData] = useState({
@@ -11,11 +11,14 @@ const Profile = () => {
     email: '',
     userType: 'student'
   })
-  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [subscriptionStatus, setSubscriptionStatus] = useState(null)
+  const [loadingSubscription, setLoadingSubscription] = useState(true)
+  const [canceling, setCanceling] = useState(false)
 
   useEffect(() => {
     loadProfile()
+    loadSubscription()
   }, [])
 
   const loadProfile = async () => {
@@ -28,8 +31,35 @@ const Profile = () => {
       })
     } catch (error) {
       console.error('Erro ao carregar perfil:', error)
+    }
+  }
+
+  const loadSubscription = async () => {
+    try {
+      const data = await planAPI.getStatus()
+      setSubscriptionStatus(data)
+    } catch (error) {
+      console.error('Erro ao carregar assinatura:', error)
     } finally {
-      setLoading(false)
+      setLoadingSubscription(false)
+    }
+  }
+
+  const isPro = subscriptionStatus?.plano === 'pro' && subscriptionStatus?.subscription_status === 'active'
+  const hasPendingSubscription = !isPro && subscriptionStatus?.subscription_status &&
+    subscriptionStatus.subscription_status !== 'active'
+
+  const handleCancel = async () => {
+    if (!window.confirm('Tem certeza que deseja cancelar o plano PRO? Você voltará para o plano gratuito.')) return
+    setCanceling(true)
+    try {
+      await planAPI.cancel()
+      await loadSubscription()
+      alert('Assinatura cancelada.')
+    } catch (error) {
+      alert('Erro ao cancelar assinatura: ' + error.message)
+    } finally {
+      setCanceling(false)
     }
   }
 
@@ -111,6 +141,16 @@ const Profile = () => {
             }`}
           >
             🔒 Segurança
+          </button>
+          <button
+            onClick={() => setActiveSection('subscription')}
+            className={`px-6 py-3 font-semibold transition-all rounded-t-xl ${
+              activeSection === 'subscription'
+                ? 'bg-white text-primary border-b-2 border-primary'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+            }`}
+          >
+            💎 Assinatura
           </button>
         </div>
 
@@ -221,6 +261,77 @@ const Profile = () => {
                 </Button>
               </div>
             </form>
+          </Card>
+        )}
+
+        {/* Assinatura */}
+        {activeSection === 'subscription' && (
+          <Card className="p-8 animate-in">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Minha Assinatura</h2>
+
+            {loadingSubscription ? (
+              <p className="text-gray-500">Carregando...</p>
+            ) : subscriptionStatus ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <p className="text-xs text-gray-500 mb-1">Plano</p>
+                    <p className="font-semibold text-gray-900 capitalize">{subscriptionStatus.plano || '—'}</p>
+                  </div>
+                  <div className={`rounded-xl p-4 ${hasPendingSubscription ? 'bg-yellow-50' : 'bg-gray-50'}`}>
+                    <p className={`text-xs mb-1 ${hasPendingSubscription ? 'text-yellow-700' : 'text-gray-500'}`}>Status</p>
+                    <p className={`font-semibold ${hasPendingSubscription ? 'text-yellow-800' : 'text-gray-900'}`}>
+                      {isPro ? 'Ativo ✓' : hasPendingSubscription ? 'Aguardando pagamento' : (subscriptionStatus.subscription_status || '—')}
+                    </p>
+                  </div>
+                  {subscriptionStatus.subscription_due_date && (
+                    <div className="bg-gray-50 rounded-xl p-4">
+                      <p className="text-xs text-gray-500 mb-1">Vencimento</p>
+                      <p className="font-semibold text-gray-900">
+                        {new Date(subscriptionStatus.subscription_due_date).toLocaleDateString('pt-BR')}
+                      </p>
+                    </div>
+                  )}
+                  {subscriptionStatus.grace_period_end && (
+                    <div className="bg-yellow-50 rounded-xl p-4">
+                      <p className="text-xs text-yellow-700 mb-1">Período de carência até</p>
+                      <p className="font-semibold text-yellow-800">
+                        {new Date(subscriptionStatus.grace_period_end).toLocaleDateString('pt-BR')}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap gap-3 pt-2">
+                  {hasPendingSubscription && subscriptionStatus.payment_link && (
+                    <a
+                      href={subscriptionStatus.payment_link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block bg-yellow-500 text-white px-5 py-2 rounded-xl font-semibold hover:bg-yellow-600 transition-colors"
+                    >
+                      Pagar e ativar assinatura →
+                    </a>
+                  )}
+                  {!isPro && !hasPendingSubscription && (
+                    <a href="/plans" className="inline-block">
+                      <Button variant="primary">Fazer Upgrade para PRO</Button>
+                    </a>
+                  )}
+                  {(isPro || hasPendingSubscription) && (
+                    <button
+                      onClick={handleCancel}
+                      disabled={canceling}
+                      className="text-sm text-red-500 hover:text-red-700 px-4 py-2 rounded-xl border border-red-200 hover:bg-red-50 transition-colors"
+                    >
+                      {canceling ? 'Cancelando...' : 'Cancelar assinatura'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <p className="text-gray-500">Não foi possível carregar os dados da assinatura.</p>
+            )}
           </Card>
         )}
 
