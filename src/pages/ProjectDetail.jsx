@@ -316,6 +316,7 @@ const ProjectDetail = () => {
   }
 
   return (
+    <>
     <DashboardLayout>
       <div className="max-w-6xl">
         {/* Header */}
@@ -856,6 +857,7 @@ const ProjectDetail = () => {
           </div>
         </div>
       )}
+    </>
   )
 }
 
