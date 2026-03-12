@@ -27,13 +27,13 @@ const Sidebar = () => {
     }
   }
 
-  const isPro = subscriptionStatus?.plano === 'pro' && subscriptionStatus?.subscription_status === 'active'
+  const isPro = subscriptionStatus?.plano === 'PRO' && subscriptionStatus?.subscription_status === 'ACTIVE'
   const planLabel = isPro ? 'Plano PRO' : 'Plano Free'
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-white border-r border-gray-200 p-6 flex flex-col">
       <Link to="/" className="block mb-8">
-        <img src="/logoPlanejador.png" alt="Planejador de ideias" className="h-18 w-auto" />
+        <img src="/assets/images/logoPlanejador.png" alt="Planejador de ideias" className="h-18 w-auto" />
       </Link>
 
       <nav className="space-y-2 flex-1">

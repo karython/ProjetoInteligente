@@ -29,9 +29,9 @@ const Plans = () => {
     }
   }
 
-  const isPro = subscriptionStatus?.plano === 'pro' && subscriptionStatus?.subscription_status === 'active'
-  const hasPendingSubscription = !isPro && subscriptionStatus?.subscription_status &&
-    subscriptionStatus.subscription_status !== 'active'
+  const isPro = subscriptionStatus?.plano === 'PRO' && subscriptionStatus?.subscription_status === 'ACTIVE'
+  const hasPendingSubscription = !isPro && subscriptionStatus?.plano === 'PRO' &&
+    subscriptionStatus?.subscription_status === 'OVERDUE'
   const paymentLinkToUse = paymentLink || subscriptionStatus?.payment_link
 
   const handleSubscribe = async (e) => {
