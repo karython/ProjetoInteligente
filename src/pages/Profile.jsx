@@ -1,15 +1,37 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import DashboardLayout from '../layouts/DashboardLayout'
 import Card from '../components/Card'
 import Button from '../components/Button'
 import Input from '../components/Input'
+import { userAPI } from '../services/api'
 
 const Profile = () => {
   const [profileData, setProfileData] = useState({
-    name: 'João Silva',
-    email: 'joao.silva@email.com',
+    name: '',
+    email: '',
     userType: 'student'
   })
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    loadProfile()
+  }, [])
+
+  const loadProfile = async () => {
+    try {
+      const data = await userAPI.getProfile()
+      setProfileData({
+        name: data.nome || '',
+        email: data.email || '',
+        userType: data.user_type || 'student'
+      })
+    } catch (error) {
+      console.error('Erro ao carregar perfil:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -19,23 +41,45 @@ const Profile = () => {
 
   const [activeSection, setActiveSection] = useState('profile')
 
-  const handleProfileUpdate = (e) => {
+  const handleProfileUpdate = async (e) => {
     e.preventDefault()
-    alert('Perfil atualizado com sucesso!')
+    setSaving(true)
+
+    try {
+      await userAPI.updateProfile({
+        nome: profileData.name,
+        email: profileData.email,
+        user_type: profileData.userType
+      })
+      alert('Perfil atualizado com sucesso!')
+    } catch (error) {
+      alert('Erro ao atualizar perfil: ' + error.message)
+    } finally {
+      setSaving(false)
+    }
   }
 
-  const handlePasswordChange = (e) => {
+  const handlePasswordChange = async (e) => {
     e.preventDefault()
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       alert('As senhas não coincidem!')
       return
     }
-    alert('Senha alterada com sucesso!')
-    setPasswordData({
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: ''
-    })
+
+    try {
+      await userAPI.changePassword(
+        passwordData.currentPassword,
+        passwordData.newPassword
+      )
+      alert('Senha alterada com sucesso!')
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      })
+    } catch (error) {
+      alert('Erro ao alterar senha: ' + error.message)
+    }
   }
 
   return (

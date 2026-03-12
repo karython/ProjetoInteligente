@@ -1,11 +1,11 @@
-# Project Booster
+# Planejador de ideias
 
 Plataforma SaaS educacional para planejamento inteligente de projetos acadêmicos e técnicos.
 
 ## Estrutura do Projeto
 
 ```
-project-booster/
+planejador-de-ideias/
 ├── src/
 │   ├── components/          # Componentes reutilizáveis
 │   │   ├── Button.jsx
@@ -24,17 +24,23 @@ project-booster/
 │   │   ├── ProjectDetail.jsx
 │   │   ├── Plans.jsx
 │   │   └── Profile.jsx
-│   ├── data/                # Dados mockados
+│   ├── services/            # Integrações com API
+│   │   └── api.js
+│   ├── data/                # Dados mockados (fallback)
 │   │   └── mockData.js
 │   ├── App.jsx              # Configuração de rotas
 │   ├── main.jsx             # Entry point
 │   └── index.css            # Estilos globais
 ├── public/
+├── .env                     # Variáveis de ambiente (não commitar)
+├── .env.example             # Template do .env
 ├── index.html
 ├── package.json
 ├── vite.config.js
 ├── tailwind.config.js
-└── postcss.config.js
+├── postcss.config.js
+├── README.md
+└── API_INTEGRATION.md       # Documentação da API
 ```
 
 ## Tecnologias Utilizadas
@@ -44,12 +50,32 @@ project-booster/
 - **React Router DOM** - Roteamento
 - **TailwindCSS** - Estilização
 - **Plus Jakarta Sans** - Tipografia
+- **API Backend** - https://projetointeligente.onrender.com
+
+## API Backend
+
+O projeto está integrado com uma API backend hospedada no Render.
+
+**Documentação da API:** https://projetointeligente.onrender.com/docs
+
+**Endpoints principais:**
+- Autenticação (login, registro)
+- Gerenciamento de usuários
+- CRUD de projetos
+- CRUD de tarefas
+- Sistema de planos
+
+Veja `API_INTEGRATION.md` para detalhes completos da integração.
 
 ## Instalação
 
 ```bash
 # Instalar dependências
 npm install
+
+# Configurar variáveis de ambiente
+cp .env.example .env
+# Editar .env se necessário (a URL da API já está configurada)
 
 # Executar em modo desenvolvimento
 npm run dev
@@ -105,14 +131,24 @@ npm run preview
 - `/plans` - Planos e preços
 - `/profile` - Meu Perfil (editar dados e senha)
 
-## Próximos Passos (Backend)
+## Status da Integração
 
-- Integração com API
-- Autenticação real (JWT)
-- Persistência de dados
-- Geração de planejamento com IA
-- Exportação PDF
-- Sistema de pagamentos
+✅ **Integrado com API Backend**
+- ✅ Sistema de autenticação (login/registro)
+- ✅ Gerenciamento de perfil
+- ✅ CRUD de projetos
+- ✅ Listagem e criação de tarefas
+- ✅ Logout com limpeza de token
+
+## Próximas Melhorias
+
+- [ ] Proteção de rotas (redirect se não autenticado)
+- [ ] Refresh token automático
+- [ ] Upload de arquivos
+- [ ] Geração de PDF
+- [ ] Sistema de pagamentos (Stripe)
+- [ ] Notificações em tempo real
+- [ ] Dark mode
 
 ## Observações
 

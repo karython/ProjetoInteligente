@@ -1,4 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { authAPI } from '../services/api'
 
 const Sidebar = () => {
   const location = useLocation()
@@ -13,6 +14,7 @@ const Sidebar = () => {
 
   const handleLogout = () => {
     if (window.confirm('Deseja realmente sair?')) {
+      authAPI.logout()
       navigate('/')
     }
   }
@@ -20,7 +22,7 @@ const Sidebar = () => {
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-white border-r border-gray-200 p-6 flex flex-col">
       <Link to="/" className="block mb-8">
-        <h1 className="text-2xl font-bold text-primary">Project Booster</h1>
+        <img src="/logoPlanejador.png" alt="Planejador de ideias" className="h-18 w-auto" />
       </Link>
       
       <nav className="space-y-2 flex-1">
@@ -46,7 +48,7 @@ const Sidebar = () => {
           onClick={handleLogout}
           className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-red-600 hover:bg-red-50 mt-4"
         >
-          <span className="text-xl">🚪</span>
+          <span className="text-xl"></span>
           <span className="font-medium">Sair</span>
         </button>
       </nav>

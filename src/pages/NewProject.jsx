@@ -5,10 +5,12 @@ import Card from '../components/Card'
 import Button from '../components/Button'
 import Input from '../components/Input'
 import Stepper from '../components/Stepper'
+import { projectAPI } from '../services/api'
 
 const NewProject = () => {
   const navigate = useNavigate()
   const [currentStep, setCurrentStep] = useState(1)
+  const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -24,12 +26,43 @@ const NewProject = () => {
 
   const steps = ['Informações Básicas', 'Tecnologias', 'Prazo', 'Objetivo']
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentStep < 4) {
       setCurrentStep(currentStep + 1)
     } else {
-      // Gerar planejamento
-      navigate('/project/1')
+      // Gerar planejamento via API
+      setLoading(true)
+      try {
+        const projectData = {
+          name: formData.name,
+          description: formData.description,
+          area: formData.area,
+          level: formData.level,
+          language: formData.language,
+          framework: formData.framework,
+          database: formData.database,
+          hosting: formData.hosting,
+          deadline: formData.deadline,
+          goal: formData.goal
+        }
+
+        // Criar projeto
+        const newProject = await projectAPI.create(projectData)
+        
+        // Gerar planejamento automático com IA
+        try {
+          await projectAPI.generatePlan(newProject.id)
+        } catch (planError) {
+          console.warn('Erro ao gerar planejamento:', planError)
+          // Continua mesmo se falhar, o usuário pode gerar depois
+        }
+        
+        navigate(`/project/${newProject.id}`)
+      } catch (error) {
+        alert('Erro ao criar projeto: ' + error.message)
+      } finally {
+        setLoading(false)
+      }
     }
   }
 
@@ -206,14 +239,21 @@ const NewProject = () => {
             <Button
               variant="ghost"
               onClick={handleBack}
-              disabled={currentStep === 1}
+              disabled={currentStep === 1 || loading}
               className="disabled:opacity-50"
             >
               ← Voltar
             </Button>
 
-            <Button onClick={handleNext}>
-              {currentStep === 4 ? '✨ Gerar Planejamento Inteligente' : 'Próximo →'}
+            <Button onClick={handleNext} disabled={loading}>
+              {loading ? (
+                <>
+                  <span className="animate-spin mr-2">⏳</span>
+                  Gerando planejamento...
+                </>
+              ) : (
+                currentStep === 4 ? '✨ Gerar Planejamento Inteligente' : 'Próximo →'
+              )}
             </Button>
           </div>
         </Card>

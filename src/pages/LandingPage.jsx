@@ -7,7 +7,10 @@ const LandingPage = () => {
       {/* Navbar */}
       <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-md border-b border-gray-200 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-primary">Project Booster</h1>
+          <div className="flex items-center gap-2">
+            <img src="/logotipo.png" alt="Planejador de ideias" className="h-10 w-auto" />
+            <span className="text-xl font-bold text-primary">Planejador de ideias</span>
+          </div>
           <div className="flex items-center gap-4">
             <Link to="/login">
               <Button variant="ghost" size="sm">Login</Button>
@@ -82,7 +85,7 @@ const LandingPage = () => {
       <section className="py-20 px-6 bg-white">
         <div className="max-w-6xl mx-auto">
           <h3 className="text-4xl font-bold text-center text-gray-900 mb-16">
-            Por Que Usar o Project Booster?
+            Por Que Usar o Planejador de ideias?
           </h3>
           <div className="grid md:grid-cols-2 gap-6">
             {[
@@ -166,14 +169,14 @@ const LandingPage = () => {
       {/* Footer */}
       <footer className="bg-gray-900 text-white py-12 px-6">
         <div className="max-w-6xl mx-auto text-center">
-          <h2 className="text-2xl font-bold mb-4">Project Booster</h2>
+          <img src="/logotipo.png" alt="Planejador de ideias" className="h-12 w-auto mx-auto mb-4" />
           <p className="text-gray-400 mb-6">Planejamento inteligente para seus projetos acadêmicos</p>
           <div className="flex justify-center gap-8 text-sm text-gray-400">
             <a href="#" className="hover:text-white transition-colors">Termos de Uso</a>
             <a href="#" className="hover:text-white transition-colors">Privacidade</a>
             <a href="#" className="hover:text-white transition-colors">Contato</a>
           </div>
-          <p className="mt-8 text-gray-500 text-sm">© 2026 Projeto Inteligente. Todos os direitos reservados. Desenvolvido por <a href="https://karythongomes.com.br"><strong>GomesTechnology</strong></a>.</p>
+          <p className="mt-8 text-gray-500 text-sm">© 2026 Planejador de ideias. Todos os direitos reservados. Desenvolvido por <a href='https://karythongomes.com.br'><strong>Gomes Technology</strong></a></p>
         </div>
       </footer>
     </div>

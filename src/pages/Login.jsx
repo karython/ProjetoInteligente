@@ -3,6 +3,7 @@ import { useState } from 'react'
 import Button from '../components/Button'
 import Input from '../components/Input'
 import Card from '../components/Card'
+import { authAPI } from '../services/api'
 
 const Login = () => {
   const navigate = useNavigate()
@@ -10,23 +11,46 @@ const Login = () => {
     email: '',
     password: ''
   })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    // Simulação de login
-    navigate('/dashboard')
+    setLoading(true)
+    setError('')
+
+    try {
+      const response = await authAPI.login(formData.email, formData.password)
+      
+      // Salvar token no localStorage
+      localStorage.setItem('token', response.access_token)
+      localStorage.setItem('user', JSON.stringify(response.user || {}))
+      
+      // Redirecionar para dashboard
+      navigate('/dashboard')
+    } catch (err) {
+      setError(err.message || 'Email ou senha incorretos')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-blue-50 to-primary/5 flex items-center justify-center px-6">
       <div className="w-full max-w-md">
         <Link to="/" className="block text-center mb-8">
-          <h1 className="text-3xl font-bold text-primary">Project Booster</h1>
+          <h1 className="text-3xl font-bold text-primary">Planejador de ideias</h1>
         </Link>
 
         <Card className="p-8 animate-scale-in">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Bem-vindo de volta</h2>
           <p className="text-gray-600 mb-8">Entre com suas credenciais</p>
+
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
+              <p className="text-red-700 text-sm">{error}</p>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <Input
@@ -57,8 +81,8 @@ const Login = () => {
               </a>
             </div>
 
-            <Button type="submit" className="w-full" size="lg">
-              Entrar
+            <Button type="submit" className="w-full" size="lg" disabled={loading}>
+              {loading ? 'Entrando...' : 'Entrar'}
             </Button>
           </form>
 
@@ -67,9 +91,6 @@ const Login = () => {
             <Link to="/signup" className="text-primary font-semibold hover:underline">
               Criar conta
             </Link>
-          </p>
-          <p className="text-center text-gray-400 mt-4 text-sm">
-            <Link to="/" className="text-primary font-semibold hover:underline ml-4">⟵ Voltar para Tela Inicial</Link>
           </p>
         </Card>
       </div>

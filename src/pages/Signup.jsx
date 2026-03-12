@@ -3,6 +3,7 @@ import { useState } from 'react'
 import Button from '../components/Button'
 import Input from '../components/Input'
 import Card from '../components/Card'
+import { authAPI } from '../services/api'
 
 const Signup = () => {
   const navigate = useNavigate()
@@ -13,23 +14,57 @@ const Signup = () => {
     confirmPassword: '',
     userType: 'student'
   })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    // Simulação de cadastro
-    navigate('/dashboard')
+    setError('')
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('As senhas não coincidem')
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      await authAPI.register({
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        user_type: formData.userType
+      })
+
+      // Fazer login automático após cadastro
+      const loginResponse = await authAPI.login(formData.email, formData.password)
+      localStorage.setItem('token', loginResponse.access_token)
+      localStorage.setItem('user', JSON.stringify(loginResponse.user || {}))
+
+      navigate('/dashboard')
+    } catch (err) {
+      setError(err.message || 'Erro ao criar conta. Tente novamente.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-blue-50 to-primary/5 flex items-center justify-center px-6 py-12">
       <div className="w-full max-w-md">
         <Link to="/" className="block text-center mb-8">
-          <h1 className="text-3xl font-bold text-primary">Project Booster</h1>
+          <h1 className="text-3xl font-bold text-primary">Planejador de ideias</h1>
         </Link>
 
         <Card className="p-8 animate-scale-in">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Criar sua conta</h2>
           <p className="text-gray-600 mb-8">Comece a organizar seus projetos</p>
+
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
+              <p className="text-red-700 text-sm">{error}</p>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <Input
@@ -100,20 +135,16 @@ const Signup = () => {
               </div>
             </div>
 
-            <Button type="submit" className="w-full" size="lg">
-              Criar Conta
+            <Button type="submit" className="w-full" size="lg" disabled={loading}>
+              {loading ? 'Criando conta...' : 'Criar Conta'}
             </Button>
           </form>
 
           <p className="text-center text-gray-600 mt-6">
             Já tem uma conta?{' '}
             <Link to="/login" className="text-primary font-semibold hover:underline">
-              Fazer login 
+              Fazer login
             </Link>
-            
-          </p>
-          <p className="text-center text-gray-400 mt-4 text-sm">
-            <Link to="/" className="text-primary font-semibold hover:underline ml-4">⟵ Voltar para Tela Inicial</Link>
           </p>
         </Card>
       </div>
