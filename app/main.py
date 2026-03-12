@@ -12,9 +12,18 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
+# CORS: allow_credentials cannot be used with wildcard origin
+# Use explicit origins for the production domain
+ALLOWED_ORIGINS = [
+    "https://planejador-inteligente.karythongomes.com.br",
+    "https://planejador-inteligente.vercel.app",
+    "http://localhost:5173",
+    "http://localhost:3000",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -22,7 +31,20 @@ app.add_middleware(
 
 @app.on_event("startup")
 def startup():
-    Base.metadata.create_all(bind=engine)
+    try:
+        from alembic.config import Config
+        from alembic import command
+        import os
+        # alembic.ini is at the project root (one level above app/)
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        alembic_ini = os.path.join(project_root, 'alembic.ini')
+        alembic_cfg = Config(alembic_ini)
+        alembic_cfg.set_main_option('script_location', os.path.join(project_root, 'alembic'))
+        command.upgrade(alembic_cfg, 'head')
+        print("Migrations applied successfully.")
+    except Exception as e:
+        print(f"Migration error (falling back to create_all): {e}")
+        Base.metadata.create_all(bind=engine)
 
 
 app.include_router(auth.router, prefix=settings.API_V1_STR)
