@@ -16,9 +16,8 @@ app = FastAPI(
 # Use explicit origins for the production domain
 ALLOWED_ORIGINS = [
     "https://planejador-inteligente.karythongomes.com.br",
-    "https://planejador-inteligente.vercel.app",
-    "http://localhost:5173",
-    "http://localhost:3000",
+    "http://localhost:5173",  # para desenvolvimento local
+    "http://localhost:3000",  # se usar outra porta local
 ]
 
 app.add_middleware(
