@@ -4,6 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import Base, engine
 from app.routes import auth, projects, ai, subscriptions
+from fastapi import Request
+from fastapi.responses import JSONResponse
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -11,6 +13,14 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc"
 )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=500,
+        content={"detail": str(exc)},
+        headers={"Access-Control-Allow-Origin": "https://planejador-inteligente.karythongomes.com.br"},
+    )
 
 # CORS: allow_credentials cannot be used with wildcard origin
 # Use explicit origins for the production domain
