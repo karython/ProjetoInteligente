@@ -87,15 +87,28 @@ def get_subscription_status(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Retorna o status atual da assinatura do usuário."""
+    """Retorna o status atual da assinatura do usuário, incluindo link de pagamento se pendente."""
     _check_and_apply_downgrade(current_user, db)
     db.refresh(current_user)
+
+    payment_link: Optional[str] = None
+    if (
+        current_user.asaas_subscription_id
+        and current_user.subscription_status in ("PENDING", "OVERDUE")
+    ):
+        try:
+            asaas = AsaasService()
+            payment_link = asaas.get_payment_link(current_user.asaas_subscription_id)
+        except Exception:
+            pass
+
     return SubscriptionStatusResponse(
         plano=current_user.plano,
         subscription_status=current_user.subscription_status,
         subscription_due_date=current_user.subscription_due_date,
         grace_period_end=current_user.grace_period_end,
         asaas_subscription_id=current_user.asaas_subscription_id,
+        payment_link=payment_link,
     )
 
 

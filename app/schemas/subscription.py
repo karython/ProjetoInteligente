@@ -17,6 +17,7 @@ class SubscriptionStatusResponse(BaseModel):
     subscription_due_date: Optional[datetime]
     grace_period_end: Optional[datetime]
     asaas_subscription_id: Optional[str]
+    payment_link: Optional[str] = None
 
 
 class SubscriptionCreatedResponse(BaseModel):
