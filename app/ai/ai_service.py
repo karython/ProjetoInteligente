@@ -1,7 +1,9 @@
 # /app/ai/ai_service.py
 import json
+import math
 import requests
-from typing import Dict, Any
+from datetime import date, timedelta
+from typing import Dict, Any, List, Tuple
 from fastapi import HTTPException, status
 from groq import Groq
 from app.core.config import settings
@@ -39,7 +41,6 @@ _SYSTEM_MESSAGES = {
     ),
 }
 
-# System message PRO sobrescreve o de nível quando o usuário tem plano PRO
 _SYSTEM_MESSAGE_PRO_OVERRIDE = (
     "Você é um Staff Engineer com 15 anos de experiência em sistemas de alta escala em produção. "
     "Independente do nível declarado, entregue o planejamento mais completo e detalhado possível. "
@@ -48,11 +49,109 @@ _SYSTEM_MESSAGE_PRO_OVERRIDE = (
     "Retorne APENAS JSON válido, sem markdown, sem explicações fora do JSON."
 )
 
+# Peso de complexidade por nível — controla ritmo e buffer do cronograma
+_COMPLEXIDADE = {
+    "básico":        {"buffer_pct": 0.30, "tarefas_por_slot": 2},
+    "intermediário": {"buffer_pct": 0.20, "tarefas_por_slot": 3},
+    "avançado":      {"buffer_pct": 0.15, "tarefas_por_slot": 5},
+}
+
+
+# ──────────────────────────────────────────────
+# Utilitários de data (sem dependências externas)
+# ──────────────────────────────────────────────
+
+def _parse_prazo(prazo_str: str) -> date:
+    """Interpreta o prazo em vários formatos comuns."""
+    from datetime import datetime
+    formatos = ["%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y", "%d/%m/%y"]
+    for fmt in formatos:
+        try:
+            return datetime.strptime(prazo_str.strip(), fmt).date()
+        except ValueError:
+            continue
+    return date.today() + timedelta(days=30)
+
+
+def _fmt(d: date) -> str:
+    return d.strftime("%d/%m/%Y")
+
+
+def _dias_uteis(inicio: date, fim: date) -> List[date]:
+    """Lista de dias úteis (seg–sex) entre inicio e fim, inclusive."""
+    dias, current = [], inicio
+    while current <= fim:
+        if current.weekday() < 5:
+            dias.append(current)
+        current += timedelta(days=1)
+    return dias
+
+
+def _semanas_uteis(inicio: date, fim: date) -> List[Tuple[date, date]]:
+    """Lista de (segunda, sexta) de cada semana entre inicio e fim."""
+    semanas = []
+    current = inicio - timedelta(days=inicio.weekday())
+    while current <= fim:
+        seg = max(current, inicio)
+        sex = min(current + timedelta(days=4), fim)
+        if sex >= inicio:
+            semanas.append((seg, sex))
+        current += timedelta(weeks=1)
+    return semanas
+
+
+def _build_calendario_diario(inicio: date, fim: date, nivel: str) -> dict:
+    cfg = _COMPLEXIDADE.get(nivel.lower(), _COMPLEXIDADE["intermediário"])
+    dias_uteis = _dias_uteis(inicio, fim)
+    dias_produtivos = math.ceil(len(dias_uteis) * (1 - cfg["buffer_pct"]))
+
+    return {
+        "data_inicio": _fmt(inicio),
+        "data_entrega": _fmt(fim),
+        "total_dias_uteis": len(dias_uteis),
+        "dias_produtivos": dias_produtivos,
+        "dias_buffer": len(dias_uteis) - dias_produtivos,
+        "tarefas_sugeridas_por_dia": cfg["tarefas_por_slot"],
+        "dias": [
+            {
+                "numero": i,
+                "data": _fmt(d),
+                "tipo": "buffer/revisão" if i > dias_produtivos else "desenvolvimento",
+            }
+            for i, d in enumerate(dias_uteis, start=1)
+        ],
+    }
+
+
+def _build_calendario_semanal(inicio: date, fim: date, nivel: str) -> dict:
+    cfg = _COMPLEXIDADE.get(nivel.lower(), _COMPLEXIDADE["intermediário"])
+    semanas = _semanas_uteis(inicio, fim)
+    semanas_produtivas = math.ceil(len(semanas) * (1 - cfg["buffer_pct"]))
+
+    return {
+        "data_inicio": _fmt(inicio),
+        "data_entrega": _fmt(fim),
+        "total_semanas": len(semanas),
+        "semanas_produtivas": semanas_produtivas,
+        "semanas_buffer": len(semanas) - semanas_produtivas,
+        "semanas": [
+            {
+                "numero": i,
+                "periodo": f"{_fmt(seg)} a {_fmt(sex)}",
+                "tipo": "buffer/validação" if i > semanas_produtivas else "desenvolvimento",
+            }
+            for i, (seg, sex) in enumerate(semanas, start=1)
+        ],
+    }
+
+
+# ──────────────────────────────────────────────
+# Serviço principal
+# ──────────────────────────────────────────────
 
 class AIService:
     def __init__(self):
         self.provider = settings.AI_PROVIDER
-
         if self.provider == "GROQ":
             if not settings.GROQ_API_KEY:
                 raise ValueError("GROQ_API_KEY not configured")
@@ -72,13 +171,26 @@ class AIService:
         tipo_cronograma: str = "semanal",
         is_pro: bool = False,
     ) -> Dict[str, Any]:
-        prompt = self._build_prompt(nome, descricao, nivel, tecnologias, prazo, tipo_cronograma, is_pro)
+        # Calcula o calendário real ANTES de montar o prompt
+        inicio = date.today()
+        fim = _parse_prazo(prazo)
+        if fim <= inicio:
+            fim = inicio + timedelta(days=7)
+
+        if tipo_cronograma == "diario":
+            calendario = _build_calendario_diario(inicio, fim, nivel)
+        else:
+            calendario = _build_calendario_semanal(inicio, fim, nivel)
+
+        prompt = self._build_prompt(
+            nome, descricao, nivel, tecnologias,
+            tipo_cronograma, is_pro, calendario,
+        )
         system_msg = self._build_system_message(nivel, is_pro)
 
         if self.provider == "GROQ":
             return self._generate_with_groq(prompt, system_msg)
-        else:
-            return self._generate_with_ollama(prompt)
+        return self._generate_with_ollama(prompt)
 
     # ──────────────────────────────────────────────
     # System message
@@ -87,8 +199,7 @@ class AIService:
     def _build_system_message(self, nivel: str, is_pro: bool) -> str:
         if is_pro:
             return _SYSTEM_MESSAGE_PRO_OVERRIDE
-        nivel_key = nivel.lower()
-        return _SYSTEM_MESSAGES.get(nivel_key, _SYSTEM_MESSAGES["intermediário"])
+        return _SYSTEM_MESSAGES.get(nivel.lower(), _SYSTEM_MESSAGES["intermediário"])
 
     # ──────────────────────────────────────────────
     # Geração
@@ -120,31 +231,20 @@ class AIService:
         try:
             response = requests.post(
                 f"{self.base_url}/api/generate",
-                json={
-                    "model": self.model,
-                    "prompt": prompt,
-                    "stream": False,
-                    "temperature": 0.3,
-                    "format": "json",
-                },
+                json={"model": self.model, "prompt": prompt, "stream": False,
+                      "temperature": 0.3, "format": "json"},
                 timeout=120,
             )
             response.raise_for_status()
-            result = response.json()
-            generated_text = result.get("response", "")
-            plan_data = json.loads(generated_text)
+            plan_data = json.loads(response.json().get("response", ""))
             self._validate_plan_structure(plan_data)
             return plan_data
         except requests.exceptions.RequestException as e:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=f"Ollama service unavailable: {str(e)}",
-            )
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                                detail=f"Ollama service unavailable: {str(e)}")
         except json.JSONDecodeError as e:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Invalid JSON response from Ollama: {str(e)}",
-            )
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                                detail=f"Invalid JSON response from Ollama: {str(e)}")
 
     # ──────────────────────────────────────────────
     # Prompt builder
@@ -156,13 +256,10 @@ class AIService:
         descricao: str,
         nivel: str,
         tecnologias: str,
-        prazo: str,
-        tipo_cronograma: str = "semanal",
-        is_pro: bool = False,
+        tipo_cronograma: str,
+        is_pro: bool,
+        calendario: dict,
     ) -> str:
-        cronograma_instrucao, cronograma_schema = self._build_cronograma_block(tipo_cronograma)
-        nivel_instrucoes = self._build_nivel_instrucoes(nivel, is_pro)
-
         return f"""Crie um planejamento completo e estruturado para o seguinte projeto:
 
 ━━━ CONTEXTO DO PROJETO ━━━
@@ -170,32 +267,34 @@ Nome: {nome}
 Descrição: {descricao}
 Nível de complexidade: {nivel}
 Tecnologias e frameworks: {tecnologias}
-Prazo final: {prazo}
-Organização do cronograma: {tipo_cronograma.upper()}
+Data de início: {calendario['data_inicio']}
+Data de entrega: {calendario['data_entrega']}
+Formato do cronograma: {tipo_cronograma.upper()}
 
-━━━ INSTRUÇÕES DE NÍVEL ━━━
-{nivel_instrucoes}
+━━━ CALENDÁRIO CALCULADO (USE ESTAS DATAS NO CRONOGRAMA) ━━━
+{self._format_calendario_resumo(tipo_cronograma, calendario)}
+
+━━━ INSTRUÇÕES DE NÍVEL E COMPLEXIDADE ━━━
+{self._build_nivel_instrucoes(nivel, is_pro)}
 
 ━━━ INSTRUÇÕES DO CRONOGRAMA ━━━
-{cronograma_instrucao}
+{self._build_cronograma_instrucao(tipo_cronograma, calendario, nivel)}
 
-━━━ FORMATO DE SAÍDA ━━━
-Retorne APENAS um JSON válido (sem markdown, sem texto fora do JSON) com esta estrutura exata:
+━━━ FORMATO DE SAÍDA (JSON ESTRITO) ━━━
+Retorne APENAS JSON válido. Nenhum texto fora do JSON.
 
 {{
   "backlog": {{
     "epicos": [
       {{
         "titulo": "string — nome do épico",
-        "descricao": "string — descrição técnica detalhada do épico",
+        "descricao": "string — descrição técnica detalhada",
         "prioridade": "alta | média | baixa",
         "user_stories": [
           {{
-            "titulo": "string — título no formato 'Como X, quero Y para Z'",
-            "descricao": "string — detalhamento técnico da story",
-            "criterios_aceite": [
-              "string — critério técnico mensurável e testável"
-            ]
+            "titulo": "string — 'Como X, quero Y para Z'",
+            "descricao": "string — detalhamento técnico",
+            "criterios_aceite": ["string — critério mensurável e testável"]
           }}
         ]
       }}
@@ -206,19 +305,17 @@ Retorne APENAS um JSON válido (sem markdown, sem texto fora do JSON) com esta e
       {{
         "caminho": "string — caminho relativo (ex: src/modules/auth)",
         "descricao": "string — responsabilidade deste diretório",
-        "arquivos_principais": [
-          "string — nome do arquivo e sua responsabilidade"
-        ]
+        "arquivos_principais": ["string — arquivo e sua responsabilidade"]
       }}
     ]
   }},
   "checklist_tecnico": {{
     "itens": [
       {{
-        "categoria": "string — ex: Segurança, Performance, Testes, Deploy, Acessibilidade",
+        "categoria": "string — ex: Segurança, Performance, Testes, Deploy",
         "tarefas": [
           {{
-            "titulo": "string — título da tarefa",
+            "titulo": "string",
             "descricao": "string — como implementar e por que é importante",
             "prioridade": "alta | média | baixa"
           }}
@@ -231,136 +328,190 @@ Retorne APENAS um JSON válido (sem markdown, sem texto fora do JSON) com esta e
       {{
         "numero": 1,
         "nome": "string — nome da fase",
-        "descricao": "string — o que será construído nesta fase e por quê nesta ordem",
-        "tarefas": [
-          "string — tarefa técnica específica e acionável"
-        ],
-        "duracao_estimada": "string — ex: 3 dias, 1 semana"
+        "descricao": "string — o que será construído e por quê nesta ordem",
+        "tarefas": ["string — tarefa técnica específica e acionável"],
+        "duracao_estimada": "string — ex: 3 dias, 1 semana",
+        "prioridade": "alta | média | baixa"
       }}
     ]
   }},
-  {cronograma_schema}
+  {self._build_cronograma_schema(tipo_cronograma, calendario)}
 }}
 
-Prazo total a cobrir: {prazo}. Cronograma no formato {tipo_cronograma}. {self._get_quantidade_minima(nivel, is_pro)}"""
+{self._get_quantidade_minima(nivel, is_pro)}"""
 
     # ──────────────────────────────────────────────
-    # Blocos auxiliares
+    # Helpers de cronograma
     # ──────────────────────────────────────────────
 
-    def _build_cronograma_block(self, tipo_cronograma: str):
+    def _format_calendario_resumo(self, tipo_cronograma: str, calendario: dict) -> str:
         if tipo_cronograma == "diario":
-            instrucao = (
-                "Organize o cronograma POR DIA. Calcule os dias úteis disponíveis até o prazo. "
-                "Cada dia deve ter objetivos claros e tarefas específicas e acionáveis. "
-                "Distribua a carga de trabalho de forma realista — evite dias sobrecarregados."
-            )
-            schema = '''"cronograma_sugerido": {
-    "tipo": "diario",
-    "dias": [
-      {
-        "numero": 1,
-        "data_referencia": "Dia 1",
-        "objetivos": ["string — objetivo concreto do dia"],
-        "tarefas": ["string — tarefa específica e acionável"]
-      }
-    ]
-  }'''
+            linhas = [
+                f"Total de dias úteis: {calendario['total_dias_uteis']}",
+                f"Dias produtivos: {calendario['dias_produtivos']} | "
+                f"Dias de buffer: {calendario['dias_buffer']}",
+                f"Capacidade sugerida: até {calendario['tarefas_sugeridas_por_dia']} tarefas/dia",
+                "",
+            ]
+            for d in calendario["dias"]:
+                marcador = "📌" if d["tipo"] == "buffer/revisão" else "🔨"
+                linhas.append(f"  {marcador} Dia {d['numero']:>2} | {d['data']} | {d['tipo']}")
         else:
-            instrucao = (
-                "Organize o cronograma POR SEMANA. Divida o prazo total em semanas produtivas. "
-                "Cada semana deve ter objetivos claros e entregas verificáveis. "
-                "Distribua a complexidade de forma progressiva — comece com fundação, "
-                "avance para features e finalize com testes, refinamentos e deploy."
+            linhas = [
+                f"Total de semanas: {calendario['total_semanas']}",
+                f"Semanas produtivas: {calendario['semanas_produtivas']} | "
+                f"Semanas de buffer: {calendario['semanas_buffer']}",
+                "",
+            ]
+            for s in calendario["semanas"]:
+                marcador = "📌" if s["tipo"] == "buffer/validação" else "🔨"
+                linhas.append(f"  {marcador} Semana {s['numero']:>2} | {s['periodo']} | {s['tipo']}")
+        return "\n".join(linhas)
+
+    def _build_cronograma_instrucao(
+        self, tipo_cronograma: str, calendario: dict, nivel: str
+    ) -> str:
+        cfg = _COMPLEXIDADE.get(nivel.lower(), _COMPLEXIDADE["intermediário"])
+
+        if tipo_cronograma == "diario":
+            return (
+                f"Distribua as tarefas nos {calendario['dias_produtivos']} dias de DESENVOLVIMENTO listados acima. "
+                f"Máximo de {cfg['tarefas_por_slot']} tarefas por dia. "
+                "Use obrigatoriamente as datas reais do campo 'data' (DD/MM/YYYY) — nunca 'Dia 1' genérico. "
+                f"Os {calendario['dias_buffer']} dias de BUFFER são para testes, correções e deploy — "
+                "liste apenas tarefas de validação e refinamento nesses dias. "
+                "ORDEM DE PRIORIDADE no cronograma:\n"
+                "  1. Épicos de prioridade ALTA → primeiros 40% dos dias produtivos\n"
+                "  2. Épicos de prioridade MÉDIA → próximos 40% dos dias produtivos\n"
+                "  3. Épicos de prioridade BAIXA → últimos 20% dos dias produtivos\n"
+                "  4. Dias de buffer → testes, ajustes, documentação e deploy"
             )
-            schema = '''"cronograma_sugerido": {
-    "tipo": "semanal",
-    "semanas": [
-      {
+        else:
+            return (
+                f"Distribua as entregas nas {calendario['semanas_produtivas']} semanas de DESENVOLVIMENTO listadas acima. "
+                "Use obrigatoriamente o campo 'periodo' (DD/MM/YYYY a DD/MM/YYYY) de cada semana — "
+                "nunca 'Semana 1' sem data. "
+                f"As {calendario['semanas_buffer']} semana(s) de BUFFER são para validação, "
+                "regressão e deploy em produção. "
+                "ORDEM DE PRIORIDADE no cronograma:\n"
+                "  1. Épicos de prioridade ALTA → primeiros 50% das semanas produtivas\n"
+                "  2. Épicos de prioridade MÉDIA → próximas 30% das semanas produtivas\n"
+                "  3. Épicos de prioridade BAIXA → últimas 20% das semanas produtivas\n"
+                "  4. Semanas de buffer → QA, documentação, deploy e ajustes finais"
+            )
+
+    def _build_cronograma_schema(self, tipo_cronograma: str, calendario: dict) -> str:
+        if tipo_cronograma == "diario":
+            ex = calendario["dias"][0]["data"] if calendario["dias"] else "13/03/2025"
+            return f'''"cronograma_sugerido": {{
+    "tipo": "diario",
+    "data_inicio": "{calendario['data_inicio']}",
+    "data_entrega": "{calendario['data_entrega']}",
+    "total_dias_uteis": {calendario['total_dias_uteis']},
+    "dias": [
+      {{
         "numero": 1,
-        "objetivos": ["string — objetivo concreto da semana"],
-        "entregas": ["string — entrega verificável ao final da semana"]
-      }
+        "data": "{ex}",
+        "tipo": "desenvolvimento | buffer/revisão",
+        "prioridade_foco": "alta | média | baixa",
+        "objetivos": ["string — objetivo concreto e mensurável do dia"],
+        "tarefas": ["string — tarefa técnica específica e acionável"],
+        "epicos_relacionados": ["string — título do épico trabalhado neste dia"]
+      }}
     ]
-  }'''
-        return instrucao, schema
+  }}'''
+        else:
+            ex = calendario["semanas"][0]["periodo"] if calendario["semanas"] else "13/03/2025 a 17/03/2025"
+            return f'''"cronograma_sugerido": {{
+    "tipo": "semanal",
+    "data_inicio": "{calendario['data_inicio']}",
+    "data_entrega": "{calendario['data_entrega']}",
+    "total_semanas": {calendario['total_semanas']},
+    "semanas": [
+      {{
+        "numero": 1,
+        "periodo": "{ex}",
+        "tipo": "desenvolvimento | buffer/validação",
+        "prioridade_foco": "alta | média | baixa",
+        "objetivos": ["string — objetivo concreto e verificável da semana"],
+        "entregas": ["string — entrega verificável ao final da semana"],
+        "epicos_relacionados": ["string — título do épico trabalhado nesta semana"]
+      }}
+    ]
+  }}'''
+
+    # ──────────────────────────────────────────────
+    # Instruções de nível
+    # ──────────────────────────────────────────────
 
     def _build_nivel_instrucoes(self, nivel: str, is_pro: bool) -> str:
-        nivel_key = nivel.lower()
-
         instrucoes = {
             "básico": """
-- Backlog: mínimo 3 épicos com linguagem simples e acessível.
-  Cada story deve ter critérios de aceite que um iniciante consiga validar.
-- Estrutura de pastas: use a estrutura convencional e recomendada pela documentação oficial
-  das tecnologias informadas. Explique em 1 frase o que cada pasta faz.
-- Checklist técnico: foque em boas práticas fundamentais — versionamento (Git), README,
-  variáveis de ambiente, validação básica de inputs, tratamento de erros simples.
-- Sequência de desenvolvimento: organize em fases didáticas e progressivas.
-  Comece pelo mais simples (configuração, "hello world") e avance gradualmente.
-- Cronograma: seja realista para um desenvolvedor iniciante. Adicione margem extra de tempo.
-  Sugira recursos de aprendizado nas tarefas quando relevante.
+Complexidade BÁSICA — diretrizes:
+- Backlog: mínimo 3 épicos com linguagem simples. Critérios de aceite validáveis manualmente.
+- Estrutura: convenção oficial da tecnologia informada. 1 frase por pasta explicando sua função.
+- Checklist: Git, README, variáveis de ambiente, validação básica, tratamento de erros simples.
+- Sequência: fases progressivas do mais simples ao mais complexo. Máximo 2 tarefas por slot.
+- Prioridade: features visíveis primeiro (feedback rápido para o desenvolvedor iniciante).
 """,
             "intermediário": """
-- Backlog: mínimo 4 épicos bem definidos com user stories no formato adequado.
-  Critérios de aceite devem ser técnicos, mensuráveis e testáveis.
-- Estrutura de pastas: aplique separação de responsabilidades clara.
-  Organize por feature ou por camada (conforme a convenção da tecnologia informada).
-  Inclua pastas para testes, configuração e documentação.
-- Checklist técnico: cubra autenticação e autorização, validação de dados,
-  testes unitários e de integração básicos, logging, tratamento de erros estruturado,
-  configuração de ambiente (dev/staging/prod) e estratégia de deploy.
-- Sequência de desenvolvimento: estruture em fases lógicas —
-  setup e infraestrutura → core features → integrações → testes → deploy.
-- Cronograma: distribua considerando revisão de código, testes e correções de bugs.
+Complexidade INTERMEDIÁRIA — diretrizes:
+- Backlog: mínimo 4 épicos. Stories com critérios técnicos mensuráveis e testáveis.
+- Estrutura: separação de responsabilidades por feature ou camada. Inclua testes e docs.
+- Checklist: autenticação, autorização, validação, testes unitários/integração, logging,
+  tratamento de erros estruturado, ambientes (dev/staging/prod), deploy.
+- Sequência: setup → core features → integrações → testes → deploy.
+- Cronograma: buffer de 20%. Alta prioridade nos primeiros 60% do prazo.
 """,
             "avançado": """
-- Backlog: mínimo 5 épicos com granularidade profissional.
-  User stories com critérios de aceite técnicos rigorosos incluindo:
-  performance esperada, casos de borda, comportamento em falhas e requisitos de segurança.
-- Estrutura de pastas: aplique a arquitetura mais adequada para as tecnologias informadas
-  (Clean Architecture, Feature-based, Domain-driven, etc.).
-  Inclua: configuração de CI/CD, infraestrutura como código (IaC), scripts de automação,
-  estrutura de testes em múltiplas camadas (unit/integration/e2e), documentação técnica
-  e convenções específicas do ecossistema (ex: para NestJS use modules/controllers/services/guards,
-  para Django use apps com models/views/serializers/permissions, para React use
-  features/components/hooks/stores, etc.).
-- Checklist técnico: deve cobrir obrigatoriamente:
-  Segurança (OWASP Top 10, autenticação, autorização granular, rate limiting, CORS, CSP),
-  Performance (caching strategy, query optimization, lazy loading, CDN),
-  Observabilidade (logs estruturados, métricas, tracing distribuído, alertas),
-  Testes (cobertura mínima, testes de contrato, testes de carga),
-  Deploy (pipeline CI/CD, rollback strategy, health checks, zero-downtime deployment),
-  Qualidade de código (linting, formatação, type safety, code review checklist).
-- Sequência de desenvolvimento: planeje como um time profissional trabalharia —
-  foundation → domain model → API layer → business logic → integrations → 
-  observability → security hardening → performance tuning → QA → production deploy.
-- Cronograma: inclua sprints realistas com buffer para imprevistos (20% do tempo).
-  Aponte dependências entre fases.
+Complexidade AVANÇADA — diretrizes:
+- Backlog: mínimo 5 épicos com granularidade profissional. Critérios rigorosos incluindo
+  performance, casos de borda, comportamento em falhas e requisitos de segurança.
+- Estrutura: arquitetura adequada (Clean Architecture, DDD, Feature-based).
+  Convenções do ecossistema:
+  · NestJS → modules/controllers/services/guards/pipes
+  · Django → apps com models/views/serializers/permissions/signals
+  · React → features/components/hooks/stores/utils
+  · FastAPI → routers/services/repositories/schemas/models
+  Inclua CI/CD, IaC, automação, testes em múltiplas camadas, documentação técnica.
+- Checklist obrigatório:
+  · Segurança: OWASP Top 10, autenticação, autorização granular, rate limiting, CORS, CSP
+  · Performance: caching, query optimization, lazy loading, CDN, profiling
+  · Observabilidade: logs estruturados, métricas, tracing, alertas
+  · Testes: cobertura mínima definida, contrato, carga, regressão
+  · Deploy: CI/CD pipeline, rollback, health checks, zero-downtime
+  · Qualidade: linting, type safety, code review checklist
+- Sequência: foundation → domain model → API → business logic → integrações →
+  observability → security hardening → performance tuning → QA → produção.
+- Cronograma: buffer de 15%. Alta prioridade nos primeiros 50%. Segurança e observabilidade
+  obrigatoriamente antes do deploy em produção.
 """,
         }
 
-        base = instrucoes.get(nivel_key, instrucoes["intermediário"])
+        base = instrucoes.get(nivel.lower(), instrucoes["intermediário"])
 
-        if is_pro and nivel_key != "avançado":
+        if is_pro and nivel.lower() != "avançado":
             base += (
-                "\n[PLANO PRO] Aplique adicionalmente padrões de nível avançado: "
-                "inclua configuração de CI/CD, observabilidade básica, "
-                "estratégia de testes mais abrangente e considerações de segurança aprofundadas."
+                "\n[PLANO PRO] Eleve ao padrão avançado: inclua CI/CD, observabilidade básica, "
+                "testes mais abrangentes e considerações de segurança aprofundadas."
             )
 
         return base.strip()
 
     def _get_quantidade_minima(self, nivel: str, is_pro: bool) -> str:
-        nivel_key = nivel.lower()
         minimos = {
-            "básico": "Gere pelo menos 3 épicos, 2 stories por épico e 3 fases de desenvolvimento.",
-            "intermediário": "Gere pelo menos 4 épicos, 3 stories por épico e 4 fases de desenvolvimento.",
-            "avançado": "Gere pelo menos 5 épicos, 4 stories por épico, 5+ fases de desenvolvimento e checklist técnico com no mínimo 5 categorias.",
+            "básico":        "OBRIGATÓRIO: mínimo 3 épicos, 2 stories por épico, 3 fases de desenvolvimento.",
+            "intermediário": "OBRIGATÓRIO: mínimo 4 épicos, 3 stories por épico, 4 fases de desenvolvimento.",
+            "avançado":      "OBRIGATÓRIO: mínimo 5 épicos, 4 stories por épico, 5+ fases, checklist com mínimo 5 categorias.",
         }
-        base = minimos.get(nivel_key, minimos["intermediário"])
+        base = minimos.get(nivel.lower(), minimos["intermediário"])
         if is_pro:
-            base += " Como usuário PRO, maximize o detalhamento em todas as seções."
+            base += " Maximize o detalhamento em TODAS as seções (plano PRO)."
+        base += (
+            "\nIMPORTANTE: o cronograma deve cobrir TODOS os slots do calendário fornecido acima, "
+            "usando as datas reais (DD/MM/YYYY). Não omita nenhum dia/semana listado. "
+            "Cada slot deve ter pelo menos 1 tarefa ou entrega associada ao backlog."
+        )
         return base
 
     # ──────────────────────────────────────────────
@@ -369,23 +520,12 @@ Prazo total a cobrir: {prazo}. Cronograma no formato {tipo_cronograma}. {self._g
 
     def _validate_plan_structure(self, plan_data: Dict[str, Any]) -> None:
         required_keys = [
-            "backlog",
-            "estrutura_pastas",
-            "checklist_tecnico",
-            "sequencia_desenvolvimento",
-            "cronograma_sugerido",
+            "backlog", "estrutura_pastas", "checklist_tecnico",
+            "sequencia_desenvolvimento", "cronograma_sugerido",
         ]
         for key in required_keys:
             if key not in plan_data:
                 raise ValueError(f"Missing required key in AI response: {key}")
-
-        if not isinstance(plan_data["backlog"], dict):
-            raise ValueError("Invalid backlog structure")
-        if not isinstance(plan_data["estrutura_pastas"], dict):
-            raise ValueError("Invalid estrutura_pastas structure")
-        if not isinstance(plan_data["checklist_tecnico"], dict):
-            raise ValueError("Invalid checklist_tecnico structure")
-        if not isinstance(plan_data["sequencia_desenvolvimento"], dict):
-            raise ValueError("Invalid sequencia_desenvolvimento structure")
-        if not isinstance(plan_data["cronograma_sugerido"], dict):
-            raise ValueError("Invalid cronograma_sugerido structure")
+        for key in required_keys:
+            if not isinstance(plan_data[key], dict):
+                raise ValueError(f"Invalid structure for key: {key}")
