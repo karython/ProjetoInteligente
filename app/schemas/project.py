@@ -10,7 +10,7 @@ class ProjectCreate(BaseModel):
     nivel: str
     tecnologias: str
     prazo: str
-    tipo_cronograma: str = "semanal"  # 'semanal' ou 'diario'
+    tipo_cronograma: str = "semanal"
 
 
 class ProjectResponse(BaseModel):
@@ -23,8 +23,9 @@ class ProjectResponse(BaseModel):
     prazo: str
     tipo_cronograma: str
     status: str
+    progresso: int = 0        # ← campo adicionado
     data_criacao: datetime
-    
+
     class Config:
         from_attributes = True
 
@@ -37,7 +38,7 @@ class ProjectPlanResponse(BaseModel):
     checklist_tecnico: Dict[str, Any]
     sequencia_desenvolvimento: Dict[str, Any]
     cronograma_sugerido: Dict[str, Any]
-    
+
     class Config:
         from_attributes = True
 
@@ -49,6 +50,7 @@ class ProjectWithPlanResponse(ProjectResponse):
 class ProjectProgressUpdate(BaseModel):
     backlog: Dict[str, Any]
     checklist_tecnico: Optional[Dict[str, Any]] = None
+    progresso: Optional[int] = None   # ← campo adicionado (calculado no backend, opcional no body)
 
 
 class RegeneratePlanRequest(BaseModel):

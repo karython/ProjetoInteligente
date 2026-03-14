@@ -14,7 +14,7 @@ class ProjectStatus(str, enum.Enum):
 
 class Project(Base):
     __tablename__ = "projects"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     nome = Column(String, nullable=False)
@@ -22,9 +22,10 @@ class Project(Base):
     nivel = Column(String, nullable=False)
     tecnologias = Column(Text, nullable=False)
     prazo = Column(String, nullable=False)
-    tipo_cronograma = Column(String, default="semanal", nullable=False)  # 'semanal' ou 'diario'
+    tipo_cronograma = Column(String, default="semanal", nullable=False)
     status = Column(Enum(ProjectStatus), default=ProjectStatus.ATIVO, nullable=False)
+    progresso = Column(Integer, default=0, nullable=False)  # 0-100
     data_criacao = Column(DateTime, default=datetime.utcnow, nullable=False)
-    
+
     user = relationship("User", back_populates="projects")
     plan = relationship("ProjectPlan", back_populates="project", uselist=False, cascade="all, delete-orphan")
