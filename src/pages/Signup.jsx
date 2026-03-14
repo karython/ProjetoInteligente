@@ -58,7 +58,7 @@ const Signup = () => {
         </Link>
 
         <Card className="p-8 animate-scale-in">
-          <img src="/assets/images/logoPlanejador.png" alt="Planejador de ideias" className="mx-auto mb-4 w-17" />
+          <img src="/assets/images/logoPlanejador.png" alt="Planejador de ideias" className="mx-auto w-17" />
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Criar sua conta</h2>
           <p className="text-gray-600 mb-8">Comece a organizar seus projetos</p>
 
