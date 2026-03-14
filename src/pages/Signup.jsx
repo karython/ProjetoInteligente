@@ -8,7 +8,7 @@ import { authAPI } from '../services/api'
 const Signup = () => {
   const navigate = useNavigate()
   const [formData, setFormData] = useState({
-    name: '',
+    nome: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -30,7 +30,7 @@ const Signup = () => {
 
     try {
       await authAPI.register({
-        name: formData.name,
+        nome: formData.nome,
         email: formData.email,
         password: formData.password,
         user_type: formData.userType

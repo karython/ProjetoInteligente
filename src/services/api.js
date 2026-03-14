@@ -89,16 +89,15 @@ export const authAPI = {
 
   // Registro
   register: async (userData) => {
-    return request('/api/v1/auth/register', {
-      method: 'POST',
-      body: JSON.stringify({
-        nome: userData.nome,
-        email: userData.email,
-        senha: userData.password,  // Backend usa 'senha' (português)
-        //user_type: userData.user_type
-      }),
-    })
-  },
+  return request('/api/v1/auth/register', {
+    method: 'POST',
+    body: JSON.stringify({
+      nome: userData.nome || userData.name,   // ← aceita os dois formatos
+      email: userData.email,
+      senha: userData.password || userData.senha,  // ← aceita os dois formatos
+    }),
+  })
+},
 
   // Logout
   logout: () => {
