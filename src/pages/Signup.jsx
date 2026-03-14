@@ -4,7 +4,7 @@ import Button from '../components/Button'
 import Input from '../components/Input'
 import Card from '../components/Card'
 import { authAPI } from '../services/api'
-import Image from '../components/Image'
+
 const Signup = () => {
   const navigate = useNavigate()
   const [formData, setFormData] = useState({
@@ -53,8 +53,8 @@ const Signup = () => {
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-blue-50 to-primary/5 flex items-center justify-center px-6 py-12">
       <div className="w-full max-w-md">
         <Link to="/" className="block text-center mb-8">
-          <Image src="/logoPlanejador.png" alt="Logo" className="mx-auto mb-4 w-16" />
-          <h1 className="text-3xl font-bold text-primary">Planejador de ideias</h1>
+          <img src="/logoPlanejador.png" alt="Logo" className="mx-auto mb-4 w-16" />
+          
         </Link>
 
         <Card className="p-8 animate-scale-in">
