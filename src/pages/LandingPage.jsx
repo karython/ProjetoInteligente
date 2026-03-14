@@ -172,9 +172,18 @@ const LandingPage = () => {
           <img src="/assets/images/logotipo.png" alt="Planejador de ideias" className="h-12 w-auto mx-auto mb-4" />
           <p className="text-gray-400 mb-6">Planejamento inteligente para seus projetos acadêmicos</p>
           <div className="flex justify-center gap-8 text-sm text-gray-400">
-            <a href="#" className="hover:text-white transition-colors">Termos de Uso</a>
-            <a href="#" className="hover:text-white transition-colors">Privacidade</a>
-            <a href="#" className="hover:text-white transition-colors">Contato</a>
+    <div className="flex justify-center gap-8 text-sm text-gray-400">
+      <Link to="/termos" className="hover:text-white transition-colors">
+        Termos de Uso
+      </Link>
+      <Link to="/privacidade" className="hover:text-white transition-colors">
+        Privacidade
+      </Link>
+      <a href="mailto:karython.unai@gmail.com.com.br" 
+         className="hover:text-white transition-colors">
+        Contato
+      </a>
+    </div>
           </div>
           <p className="mt-8 text-gray-500 text-sm">© 2026 Planejador de ideias. Todos os direitos reservados. Desenvolvido por <a href='https://karythongomes.com.br'><strong>Gomes Technology</strong></a></p>
         </div>

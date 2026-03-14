@@ -7,6 +7,8 @@ import NewProject from './pages/NewProject'
 import ProjectDetail from './pages/ProjectDetail'
 import Plans from './pages/Plans'
 import Profile from './pages/Profile'
+import Terms from './pages/legal/Terms'
+import Privacy from './pages/legal/Privacy'
 
 function App() {
   return (
@@ -20,6 +22,8 @@ function App() {
         <Route path="/project/:id" element={<ProjectDetail />} />
         <Route path="/plans" element={<Plans />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/termos" element={<Terms />} />
+        <Route path="/privacidade" element={<Privacy />} />
       </Routes>
     </Router>
   )
