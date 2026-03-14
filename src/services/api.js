@@ -95,7 +95,7 @@ export const authAPI = {
         nome: userData.nome,
         email: userData.email,
         senha: userData.password,  // Backend usa 'senha' (português)
-        user_type: userData.user_type
+        //user_type: userData.user_type
       }),
     })
   },
