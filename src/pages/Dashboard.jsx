@@ -18,12 +18,16 @@ const Dashboard = () => {
   const loadProjects = async () => {
     try {
       const data = await projectAPI.getAll()
-     
-      
-      // Mapear campos em português da API para o formato do frontend
+
       const mappedProjects = data.map(project => {
-      
-        
+        const allStories = project.plan?.backlog?.epicos?.flatMap(e => e.user_stories || []) || []
+        const progress = allStories.length > 0
+          ? Math.round(allStories.filter(s => s.completed).length / allStories.length * 100)
+          : (project.progresso || 0)
+
+        const isConcluido = project.status === 'concluido' || project.status === 'concluído'
+        const status = (isConcluido || progress === 100) ? 'completed' : 'active'
+
         return {
           id: project.id,
           name: project.nome || 'Projeto sem nome',
@@ -36,24 +40,17 @@ const Dashboard = () => {
           hosting: 'N/A',
           deadline: project.prazo || new Date().toISOString().split('T')[0],
           goal: project.objetivo || 'N/A',
-          progress: (() => {
-            const allStories = project.plan?.backlog?.epicos?.flatMap(e => e.user_stories || []) || []
-            return allStories.length > 0
-              ? Math.round(allStories.filter(s => s.completed).length / allStories.length * 100)
-              : (project.progresso || 0)
-          })(),
-          status: project.status === 'concluido' || project.status === 'concluído' ? 'completed' : 'active',
+          progress,
+          status,
           createdAt: project.data_criacao || new Date().toISOString(),
-          tasks: project.plan?.backlog || []
+          tasks: project.plan?.backlog || [],
         }
       })
-      
-      
+
       setProjects(mappedProjects)
       setError('')
     } catch (err) {
       console.error('Erro completo:', err)
-      // Mensagens de erro amigáveis
       if (err.message.includes('fetch') || err.message.includes('Failed to fetch')) {
         setError('A API está demorando para responder. Aguarde alguns segundos e recarregue a página.')
       } else if (err.message.includes('401') || err.message.includes('Unauthorized')) {
@@ -67,9 +64,9 @@ const Dashboard = () => {
     }
   }
 
-  const activeProjects = projects.filter(p => p.status === 'active' || p.status === 'em_andamento')
-  const completedProjects = projects.filter(p => p.status === 'completed' || p.status === 'concluido')
-  const avgProgress = projects.length > 0 
+  const activeProjects    = projects.filter(p => p.status === 'active' && p.progress < 100)
+  const completedProjects = projects.filter(p => p.status === 'completed' || p.progress === 100)
+  const avgProgress = projects.length > 0
     ? Math.round(projects.reduce((acc, p) => acc + (p.progress || 0), 0) / projects.length)
     : 0
 
@@ -96,12 +93,8 @@ const Dashboard = () => {
             <h2 className="text-xl font-bold text-gray-900 mb-2">Erro ao Carregar Projetos</h2>
             <p className="text-red-600 mb-6">{error}</p>
             <div className="flex gap-4 justify-center">
-              <Button onClick={() => window.location.reload()}>
-                Recarregar Página
-              </Button>
-              <Button variant="outline" onClick={() => navigate('/new-project')}>
-                Criar Novo Projeto
-              </Button>
+              <Button onClick={() => window.location.reload()}>Recarregar Página</Button>
+              <Button variant="outline" onClick={() => navigate('/new-project')}>Criar Novo Projeto</Button>
             </div>
           </Card>
         </div>
@@ -122,9 +115,7 @@ const Dashboard = () => {
         <div className="grid md:grid-cols-3 gap-6 mb-8">
           <Card className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center text-2xl">
-                📁
-              </div>
+              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center text-2xl">📁</div>
               <span className="text-3xl font-bold text-primary">{activeProjects.length}</span>
             </div>
             <h3 className="text-sm font-semibold text-gray-600">Projetos Ativos</h3>
@@ -132,9 +123,7 @@ const Dashboard = () => {
 
           <Card className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center text-2xl">
-                ✅
-              </div>
+              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center text-2xl">✅</div>
               <span className="text-3xl font-bold text-green-600">{completedProjects.length}</span>
             </div>
             <h3 className="text-sm font-semibold text-gray-600">Projetos Concluídos</h3>
@@ -142,9 +131,7 @@ const Dashboard = () => {
 
           <Card className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center text-2xl">
-                📊
-              </div>
+              <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center text-2xl">📊</div>
               <span className="text-3xl font-bold text-purple-600">{avgProgress}%</span>
             </div>
             <h3 className="text-sm font-semibold text-gray-600">Progresso Médio</h3>
@@ -164,7 +151,7 @@ const Dashboard = () => {
           </Link>
         </Card>
 
-        {/* Recent Projects */}
+        {/* Projects list */}
         <div>
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-gray-900">Meus Projetos</h2>
@@ -177,57 +164,52 @@ const Dashboard = () => {
             {projects.length === 0 ? (
               <Card className="p-8 text-center">
                 <p className="text-gray-600 mb-4">Você ainda não tem projetos.</p>
-                <Link to="/new-project">
-                  <Button>Criar Primeiro Projeto</Button>
-                </Link>
+                <Link to="/new-project"><Button>Criar Primeiro Projeto</Button></Link>
               </Card>
             ) : (
               projects.map((project) => (
-              <Link key={project.id} to={`/project/${project.id}`}>
-                <Card hover className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-bold text-gray-900">{project.name}</h3>
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          project.status === 'active' 
-                            ? 'bg-blue-100 text-blue-700' 
-                            : 'bg-green-100 text-green-700'
-                        }`}>
-                          {project.status === 'active' ? 'Em andamento' : 'Concluído'}
-                        </span>
-                      </div>
-                      <p className="text-gray-600 text-sm mb-3">{project.description}</p>
-                      <div className="flex items-center gap-4 text-sm text-gray-500">
-                        <span className="flex items-center gap-1">
-                          💻 {project.framework}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          🗄️ {project.database}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          📅 {new Date(project.deadline).toLocaleDateString('pt-BR')}
-                        </span>
+                <Link key={project.id} to={`/project/${project.id}`}>
+                  <Card hover className="p-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-lg font-bold text-gray-900">{project.name}</h3>
+                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                            project.status === 'completed' || project.progress === 100
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-blue-100 text-blue-700'
+                          }`}>
+                            {project.status === 'completed' || project.progress === 100 ? 'Concluído' : 'Em andamento'}
+                          </span>
+                        </div>
+                        <p className="text-gray-600 text-sm mb-3">{project.description}</p>
+                        <div className="flex items-center gap-4 text-sm text-gray-500">
+                          <span className="flex items-center gap-1">💻 {project.framework}</span>
+                          <span className="flex items-center gap-1">🗄️ {project.database}</span>
+                          <span className="flex items-center gap-1">
+                            📅 {new Date(project.deadline).toLocaleDateString('pt-BR')}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Progress Bar */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2 text-sm">
-                      <span className="font-semibold text-gray-700">Progresso</span>
-                      <span className="font-bold text-primary">{project.progress}%</span>
+                    <div>
+                      <div className="flex items-center justify-between mb-2 text-sm">
+                        <span className="font-semibold text-gray-700">Progresso</span>
+                        <span className="font-bold text-primary">{project.progress}%</span>
+                      </div>
+                      <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            project.progress === 100 ? 'bg-green-500' : 'bg-primary'
+                          }`}
+                          style={{ width: `${project.progress}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-primary rounded-full transition-all duration-500"
-                        style={{ width: `${project.progress}%` }}
-                      />
-                    </div>
-                  </div>
-                </Card>
-              </Link>
-            ))
+                  </Card>
+                </Link>
+              ))
             )}
           </div>
         </div>
