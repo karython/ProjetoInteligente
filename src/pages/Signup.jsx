@@ -53,11 +53,12 @@ const Signup = () => {
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-blue-50 to-primary/5 flex items-center justify-center px-6 py-12">
       <div className="w-full max-w-md">
         <Link to="/" className="block text-center mb-8">
-          <img src="/assets/images/logoPlanejador.png" alt="Planejador de ideias" className="mx-auto mb-4 w-19" />
+          
           
         </Link>
 
         <Card className="p-8 animate-scale-in">
+          <img src="/assets/images/logoPlanejador.png" alt="Planejador de ideias" className="mx-auto mb-4 w-17" />
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Criar sua conta</h2>
           <p className="text-gray-600 mb-8">Comece a organizar seus projetos</p>
 
