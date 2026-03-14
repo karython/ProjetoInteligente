@@ -179,7 +179,7 @@ export const projectAPI = {
     return request('/api/v1/projects', {
       method: 'POST',
       body: JSON.stringify({
-        nome: projectData.nome,                    // nome (português)
+        nome: projectData.name,                    // nome (português)
         descricao: projectData.description,        // descricao (português)
         nivel: projectData.level,                  // nivel (português)
         tecnologias: projectData.language ? 
