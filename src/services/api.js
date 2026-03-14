@@ -92,7 +92,7 @@ export const authAPI = {
     return request('/api/v1/auth/register', {
       method: 'POST',
       body: JSON.stringify({
-        name: userData.name,
+        nome: userData.nome,
         email: userData.email,
         senha: userData.password,  // Backend usa 'senha' (português)
         user_type: userData.user_type
@@ -179,7 +179,7 @@ export const projectAPI = {
     return request('/api/v1/projects', {
       method: 'POST',
       body: JSON.stringify({
-        nome: projectData.name,                    // nome (português)
+        nome: projectData.nome,                    // nome (português)
         descricao: projectData.description,        // descricao (português)
         nivel: projectData.level,                  // nivel (português)
         tecnologias: projectData.language ? 
