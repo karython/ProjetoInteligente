@@ -73,8 +73,8 @@ const Signup = () => {
               label="Nome Completo"
               type="text"
               placeholder="Seu nome"
-              value={formData.name}
-              onChange={(e) => setFormData({...formData, name: e.target.value})}
+              value={formData.nome}
+              onChange={(e) => setFormData({...formData, nome: e.target.value})}
               required
             />
 
