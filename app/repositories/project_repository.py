@@ -40,7 +40,12 @@ class ProjectRepository:
 
     def get_by_user(self, user_id: int) -> List[Project]:
         return self.db.query(Project).filter(Project.user_id == user_id).all()
-
+    def count_by_user(self, user_id: int) -> int:
+        return (
+            self.db.query(Project)
+            .filter(Project.user_id == user_id)
+            .count()
+        )
     def count_active_by_user(self, user_id: int) -> int:
         return self.db.query(Project).filter(
             and_(
