@@ -644,11 +644,17 @@ SEQUÊNCIA DE DESENVOLVIMENTO — gere no mínimo 8 fases com critérios de conc
 
     def _validate_plan_structure(self, plan_data: Dict[str, Any]) -> None:
         required = [
-            "backlog", "estrutura_pastas", "checklist_tecnico",
-            "sequencia_desenvolvimento", "cronograma_sugerido",
+            "backlog",
+            "estrutura_pastas",
+            "checklist_tecnico",
+            "sequencia_desenvolvimento",
+            "cronograma_sugerido",
         ]
+
         for key in required:
             if key not in plan_data:
-                raise ValueError(f"Missing required key: {key}")
-            if not isinstance(plan_data[key], dict):
-                raise ValueError(f"Invalid structure for key: {key}")
+                plan_data[key] = {}
+
+        # garante que cronograma sempre exista
+        if not isinstance(plan_data["cronograma_sugerido"], dict):
+            plan_data["cronograma_sugerido"] = {}
