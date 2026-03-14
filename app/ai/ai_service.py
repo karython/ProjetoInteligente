@@ -377,45 +377,60 @@ Retorne APENAS JSON válido, sem texto fora do JSON.
             )
 
     def _build_cronograma_schema(self, tipo_cronograma: str, calendario: dict) -> str:
+
         if tipo_cronograma == "diario":
-            ex = calendario["dias"][0]["data"] if calendario["dias"] else "13/03/2025"
-            return f'''"cronograma_sugerido": {{
+
+            dias_json = json.dumps(calendario["dias"], ensure_ascii=False, indent=2)
+
+            return f'''
+    "cronograma_sugerido": {{
     "tipo": "diario",
     "data_inicio": "{calendario['data_inicio']}",
     "data_entrega": "{calendario['data_entrega']}",
     "total_dias_uteis": {calendario['total_dias_uteis']},
-    "dias": [
-      {{
-        "numero": 1,
-        "data": "{ex}",
-        "tipo": "desenvolvimento | buffer/revisão",
-        "prioridade_foco": "alta | média | baixa",
-        "objetivos": ["string — objetivo mensurável do dia"],
-        "tarefas": ["string — tarefa técnica específica e acionável"],
-        "epicos_relacionados": ["string — título do épico trabalhado"]
-      }}
-    ]
-  }}'''
+
+    "dias": {dias_json}
+
+    }}
+
+    INSTRUÇÃO CRÍTICA:
+    Para CADA objeto do array "dias" acima você DEVE adicionar:
+
+    - prioridade_foco
+    - objetivos
+    - tarefas
+    - epicos_relacionados
+
+    NÃO REMOVA nenhum dia do calendário.
+    PREENCHA todos os dias existentes.
+    '''
+
         else:
-            ex = calendario["semanas"][0]["periodo"] if calendario["semanas"] else "13/03/2025 a 17/03/2025"
-            return f'''"cronograma_sugerido": {{
+
+            semanas_json = json.dumps(calendario["semanas"], ensure_ascii=False, indent=2)
+
+            return f'''
+    "cronograma_sugerido": {{
     "tipo": "semanal",
     "data_inicio": "{calendario['data_inicio']}",
     "data_entrega": "{calendario['data_entrega']}",
     "total_semanas": {calendario['total_semanas']},
-    "semanas": [
-      {{
-        "numero": 1,
-        "periodo": "{ex}",
-        "tipo": "desenvolvimento | buffer/validação",
-        "prioridade_foco": "alta | média | baixa",
-        "objetivos": ["string — objetivo verificável da semana"],
-        "entregas": ["string — entrega verificável ao final da semana"],
-        "epicos_relacionados": ["string — título do épico trabalhado"]
-      }}
-    ]
-  }}'''
 
+    "semanas": {semanas_json}
+
+    }}
+
+    INSTRUÇÃO CRÍTICA:
+    Para CADA objeto do array "semanas" acima você DEVE adicionar:
+
+    - prioridade_foco
+    - objetivos
+    - entregas
+    - epicos_relacionados
+
+    NÃO REMOVA nenhuma semana do calendário.
+    PREENCHA todas as semanas existentes.
+    '''
     # ──────────────────────────────────────────────
     # Instruções de nível (checklist + sequência detalhados)
     # ──────────────────────────────────────────────
@@ -643,6 +658,7 @@ SEQUÊNCIA DE DESENVOLVIMENTO — gere no mínimo 8 fases com critérios de conc
     # ──────────────────────────────────────────────
 
     def _validate_plan_structure(self, plan_data: Dict[str, Any]) -> None:
+
         required = [
             "backlog",
             "estrutura_pastas",
@@ -655,6 +671,89 @@ SEQUÊNCIA DE DESENVOLVIMENTO — gere no mínimo 8 fases com critérios de conc
             if key not in plan_data:
                 plan_data[key] = {}
 
-        # garante que cronograma sempre exista
-        if not isinstance(plan_data["cronograma_sugerido"], dict):
+        cronograma = plan_data.get("cronograma_sugerido", {})
+
+        if not isinstance(cronograma, dict):
             plan_data["cronograma_sugerido"] = {}
+
+        # valida semanal
+        if cronograma.get("tipo") == "semanal":
+
+            semanas = cronograma.get("semanas", [])
+
+            if not isinstance(semanas, list) or len(semanas) == 0:
+                cronograma["semanas"] = []
+
+            for semana in semanas:
+
+                semana.setdefault("prioridade_foco", "média")
+                semana.setdefault("objetivos", [])
+                semana.setdefault("entregas", [])
+                semana.setdefault("epicos_relacionados", [])
+
+        # valida diário
+        if cronograma.get("tipo") == "diario":
+
+            dias = cronograma.get("dias", [])
+
+            if not isinstance(dias, list) or len(dias) == 0:
+                cronograma["dias"] = []
+
+            for dia in dias:
+
+                dia.setdefault("prioridade_foco", "média")
+                dia.setdefault("objetivos", [])
+                dia.setdefault("tarefas", [])
+                dia.setdefault("epicos_relacionados", [])
+
+        plan_data["cronograma_sugerido"] = cronograma
+
+    def _fallback_cronograma(self, calendario: dict, tipo: str):
+
+        if tipo == "semanal":
+
+            semanas = []
+
+            for s in calendario["semanas"]:
+
+                semanas.append({
+                    "numero": s["numero"],
+                    "periodo": s["periodo"],
+                    "tipo": s["tipo"],
+                    "prioridade_foco": "média",
+                    "objetivos": ["Planejamento automático"],
+                    "entregas": ["Progresso no desenvolvimento"],
+                    "epicos_relacionados": []
+                })
+
+            return {
+                "tipo": "semanal",
+                "data_inicio": calendario["data_inicio"],
+                "data_entrega": calendario["data_entrega"],
+                "total_semanas": calendario["total_semanas"],
+                "semanas": semanas
+            }
+
+        else:
+
+            dias = []
+
+            for d in calendario["dias"]:
+
+                dias.append({
+                    "numero": d["numero"],
+                    "data": d["data"],
+                    "tipo": d["tipo"],
+                    "prioridade_foco": "média",
+                    "objetivos": ["Desenvolvimento incremental"],
+                    "tarefas": ["Implementar funcionalidades planejadas"],
+                    "epicos_relacionados": []
+                })
+
+            return {
+                "tipo": "diario",
+                "data_inicio": calendario["data_inicio"],
+                "data_entrega": calendario["data_entrega"],
+                "total_dias_uteis": calendario["total_dias_uteis"],
+                "dias": dias
+            }
