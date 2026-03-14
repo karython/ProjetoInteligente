@@ -6,6 +6,8 @@ from app.core.database import Base, engine
 from app.routes import auth, projects, ai, subscriptions
 from fastapi import Request
 from fastapi.responses import JSONResponse
+import asyncio
+import httpx
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -14,6 +16,48 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
+async def keep_alive():
+    url = "https://projetointeligente.onrender.com/health"
+
+    while True:
+        try:
+            async with httpx.AsyncClient() as client:
+                await client.get(url)
+            print("Ping keep-alive enviado")
+        except Exception as e:
+            print("Erro no keep-alive:", e)
+
+        await asyncio.sleep(240)  # 4 minutos
+
+@app.on_event("startup")
+async def startup():
+    try:
+        from alembic.config import Config
+        from alembic import command
+        import os
+
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        alembic_ini = os.path.join(project_root, 'alembic.ini')
+
+        alembic_cfg = Config(alembic_ini)
+        alembic_cfg.set_main_option(
+            'script_location',
+            os.path.join(project_root, 'alembic')
+        )
+
+        command.upgrade(alembic_cfg, 'head')
+
+        print("Migrations applied successfully.")
+
+    except Exception as e:
+        print(f"Migration error (falling back to create_all): {e}")
+        Base.metadata.create_all(bind=engine)
+
+    # iniciar keep alive
+    asyncio.create_task(keep_alive())
+
+
+    
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
